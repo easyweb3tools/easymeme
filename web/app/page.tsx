@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-muted">
