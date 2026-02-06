@@ -3,12 +3,14 @@ export function RiskBadge({ level, score }: { level: string; score: number }) {
     safe: 'bg-green-500',
     warning: 'bg-yellow-500',
     danger: 'bg-red-500',
+    pending: 'bg-gray-500',
   };
 
   const badge = {
     safe: 'SAFE',
     warning: 'WARN',
     danger: 'DANGER',
+    pending: 'PENDING',
   };
 
   return (

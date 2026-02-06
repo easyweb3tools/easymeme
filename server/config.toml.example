@@ -1,7 +1,5 @@
 port = "8080"
 database_url = "postgres://postgres:postgres@localhost:5432/easymeme?sslmode=disable"
-redis_url = "redis://localhost:6379"
 # BSC RPC (HTTP 必填，WS 可选)
 bsc_rpc_http = "https://bsc-dataseed.bnbchain.org"
 bsc_rpc_ws = "wss://bsc-mainnet.nodereal.io/ws/v1/YOUR_API_KEY"
-bscscan_api_key = "your_api_key_here"

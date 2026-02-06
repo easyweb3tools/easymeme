@@ -9,10 +9,25 @@ export function TokenList() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getTokens().then((data) => {
-      setTokens(data);
-      setLoading(false);
-    });
+    let alive = true;
+
+    const load = async () => {
+      try {
+        const data = await getTokens();
+        if (alive) {
+          setTokens(data);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (alive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+
+    const interval = setInterval(load, 10000);
 
     const ws = createWebSocket((data) => {
       if (data.type === 'new_token') {
@@ -20,7 +35,11 @@ export function TokenList() {
       }
     });
 
-    return () => ws.close();
+    return () => {
+      alive = false;
+      clearInterval(interval);
+      ws.close();
+    };
   }, []);
 
   if (loading) {

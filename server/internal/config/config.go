@@ -1,58 +1,52 @@
 package config
 
 import (
-    "fmt"
-    "os"
-    "path/filepath"
-    "strings"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
-    "github.com/spf13/viper"
+	"github.com/spf13/viper"
 )
 
 type Config struct {
-    Port          string
-    DatabaseURL   string
-    RedisURL      string
-    BscRpcHTTP    string
-    BscRpcWS      string
-    BscscanAPIKey string
+	Port        string
+	DatabaseURL string
+	BscRpcHTTP  string
+	BscRpcWS    string
 }
 
 func Load() (*Config, error) {
-    v := viper.New()
+	v := viper.New()
 
-    v.SetConfigType("toml")
-    if path := os.Getenv("CONFIG_PATH"); path != "" {
-        v.SetConfigFile(path)
-    } else {
-        v.SetConfigName("config")
-        v.AddConfigPath(".")
-        v.AddConfigPath("./server")
-        v.AddConfigPath(filepath.Join(".", "config"))
-    }
+	v.SetConfigType("toml")
+	if path := os.Getenv("CONFIG_PATH"); path != "" {
+		v.SetConfigFile(path)
+	} else {
+		v.SetConfigName("config")
+		v.AddConfigPath(".")
+		v.AddConfigPath("./server")
+		v.AddConfigPath(filepath.Join(".", "config"))
+	}
 
-    v.SetDefault("port", "8080")
-    v.SetDefault("database_url", "")
-    v.SetDefault("redis_url", "")
-    v.SetDefault("bsc_rpc_http", "https://bsc-dataseed.binance.org")
-    v.SetDefault("bsc_rpc_ws", "")
-    v.SetDefault("bscscan_api_key", "")
+	v.SetDefault("port", "8080")
+	v.SetDefault("database_url", "")
+	v.SetDefault("bsc_rpc_http", "https://bsc-dataseed.binance.org")
+	v.SetDefault("bsc_rpc_ws", "")
 
-    v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-    v.AutomaticEnv()
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
 
-    if err := v.ReadInConfig(); err != nil {
-        if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-            return nil, fmt.Errorf("load config: %w", err)
-        }
-    }
+	if err := v.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return nil, fmt.Errorf("load config: %w", err)
+		}
+	}
 
-    return &Config{
-        Port:          v.GetString("port"),
-        DatabaseURL:   v.GetString("database_url"),
-        RedisURL:      v.GetString("redis_url"),
-        BscRpcHTTP:    v.GetString("bsc_rpc_http"),
-        BscRpcWS:      v.GetString("bsc_rpc_ws"),
-        BscscanAPIKey: v.GetString("bscscan_api_key"),
-    }, nil
+	return &Config{
+		Port:        v.GetString("port"),
+		DatabaseURL: v.GetString("database_url"),
+		BscRpcHTTP:  v.GetString("bsc_rpc_http"),
+		BscRpcWS:    v.GetString("bsc_rpc_ws"),
+	}, nil
 }

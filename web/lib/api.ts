@@ -10,7 +10,7 @@ export interface Token {
   pair_address: string;
   initial_liquidity: string;
   risk_score: number;
-  risk_level: 'safe' | 'warning' | 'danger';
+  risk_level: 'pending' | 'safe' | 'warning' | 'danger';
   is_honeypot: boolean;
   buy_tax: number;
   sell_tax: number;

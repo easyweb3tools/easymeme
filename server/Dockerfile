@@ -14,8 +14,6 @@ RUN apk --no-cache add ca-certificates tzdata
 ENV TZ=UTC
 
 COPY --from=builder /bin/server /bin/server
-COPY --from=builder /app/migrations /migrations
-
 EXPOSE 8080
 
 CMD ["/bin/server"]

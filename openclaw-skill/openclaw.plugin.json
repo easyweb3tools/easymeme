@@ -1,0 +1,18 @@
+{
+  "id": "easymeme-openclaw-skill",
+  "name": "EasyMeme OpenClaw Skill",
+  "version": "0.1.0",
+  "description": "OpenClaw skill plugin for the EasyMeme agent.",
+  "configSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": true
+  },
+  "configDefaults": {},
+  "skills": [
+    "./skills"
+  ],
+  "extensions": [
+    "./dist/index.js"
+  ]
+}

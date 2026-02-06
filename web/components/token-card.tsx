@@ -39,7 +39,8 @@ export function TokenCard({ token }: { token: Token }) {
           >
             View
           </a>
-          {!token.is_honeypot && token.risk_level !== 'danger' && (
+          {!token.is_honeypot &&
+            (token.risk_level === 'safe' || token.risk_level === 'warning') && (
             <button
               onClick={() => setShowTrade(!showTrade)}
               className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm"
