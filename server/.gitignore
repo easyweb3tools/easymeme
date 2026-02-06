@@ -1,0 +1,25 @@
+# Binaries
+bin/
+*.exe
+*.out
+*.test
+
+# Build artifacts
+/dist/
+/build/
+
+# Logs
+*.log
+
+# Local config
+config.toml
+
+# Env files
+.env
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
