@@ -13,7 +13,7 @@ Agent 自动：发现新代币 → AI 分析风险 → 识别金狗 → 汇报�
 ## 🚀 一键启动
 
 ```bash
-git clone https://github.com/xxx/easymeme
+git clone https://github.com/easyweb3tools/easymeme
 cd easymeme
 docker compose up --build
 ```
@@ -48,8 +48,23 @@ docker compose up --build
 ```bash
 # 需要提前设置 Gemini Key（不要提交到仓库）
 export GEMINI_API_KEY=your_key
+# 可选：建议使用自有 BSC RPC / BSCScan Key，避免公共节点限流
+export BSC_RPC_HTTP=https://your-bsc-http
+export BSC_RPC_WS=wss://your-bsc-ws
+export BSCSCAN_API_KEY=your_bscscan_key
 
 docker compose up -d --build
+```
+
+> OpenClaw 官方默认 provider 是 `anthropic`。如果要切换到 Gemini，需要在配置中设置：
+> `agents.defaults.model.primary = "google/gemini-3-flash-preview"`，并提供 `GEMINI_API_KEY`。
+
+本仓库提供了默认的 `openclaw.json`（已设置为 Gemini）。
+如需使用其他 provider，请根据官方文档设置对应的 `API_KEY` 环境变量。
+Docker Compose 会把该文件挂载到 OpenClaw 配置路径，你可以直接编辑它切换模型。
+参考文档：
+```
+https://docs.openclaw.ai/concepts/model-providers
 ```
 
 **方式 B：分组件启动（便于调试）**
@@ -65,6 +80,9 @@ cd server
 cp config.toml.example config.toml
 # 编辑 config.toml，填入 BSC RPC 和 BscScan Key
 export AUTO_MIGRATE=true
+export BSC_RPC_HTTP=https://your-bsc-http
+export BSC_RPC_WS=wss://your-bsc-ws
+export BSCSCAN_API_KEY=your_bscscan_key
 go run ./cmd/server
 ```
 
@@ -82,7 +100,9 @@ npm run dev
 cd openclaw-skill
 npm install && npm run build
 export SERVER_API_URL=http://localhost:8080
-export GEMINI_API_KEY=your_key
+# ~/.openclaw/openclaw.json 里配置默认provider为Gemini时，设置GEMINI_API_KEY环境变量
+# 其他provider参考官方文档 https://docs.openclaw.ai/concepts/model-providers
+export GEMINI_API_KEY=your_key 
 openclaw plugins install --link ./
 openclaw plugins enable easymeme-openclaw-skill
 openclaw agent --local --session-id easymeme --message "获取待分析代币 -> AI 分析 -> 回写结果"

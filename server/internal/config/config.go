@@ -10,10 +10,11 @@ import (
 )
 
 type Config struct {
-	Port        string
-	DatabaseURL string
-	BscRpcHTTP  string
-	BscRpcWS    string
+	Port          string
+	DatabaseURL   string
+	BscRpcHTTP    string
+	BscRpcWS      string
+	BscScanAPIKey string
 }
 
 func Load() (*Config, error) {
@@ -33,9 +34,15 @@ func Load() (*Config, error) {
 	v.SetDefault("database_url", "")
 	v.SetDefault("bsc_rpc_http", "https://bsc-dataseed.binance.org")
 	v.SetDefault("bsc_rpc_ws", "")
+	v.SetDefault("bscscan_api_key", "")
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
+	_ = v.BindEnv("port", "port", "PORT")
+	_ = v.BindEnv("database_url", "database_url", "DATABASE_URL")
+	_ = v.BindEnv("bsc_rpc_http", "bsc_rpc_http", "BSC_RPC_HTTP")
+	_ = v.BindEnv("bsc_rpc_ws", "bsc_rpc_ws", "BSC_RPC_WS")
+	_ = v.BindEnv("bscscan_api_key", "bscscan_api_key", "BSCSCAN_API_KEY")
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
@@ -44,9 +51,10 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		Port:        v.GetString("port"),
-		DatabaseURL: v.GetString("database_url"),
-		BscRpcHTTP:  v.GetString("bsc_rpc_http"),
-		BscRpcWS:    v.GetString("bsc_rpc_ws"),
+		Port:          v.GetString("port"),
+		DatabaseURL:   v.GetString("database_url"),
+		BscRpcHTTP:    v.GetString("bsc_rpc_http"),
+		BscRpcWS:      v.GetString("bsc_rpc_ws"),
+		BscScanAPIKey: v.GetString("bscscan_api_key"),
 	}, nil
 }

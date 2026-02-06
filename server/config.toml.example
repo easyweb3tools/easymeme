@@ -3,3 +3,5 @@ database_url = "postgres://postgres:postgres@localhost:5432/easymeme?sslmode=dis
 # BSC RPC (HTTP 必填，WS 可选)
 bsc_rpc_http = "https://bsc-dataseed.bnbchain.org"
 bsc_rpc_ws = "wss://bsc-mainnet.nodereal.io/ws/v1/YOUR_API_KEY"
+# BSCScan API Key（可选，但建议提供以避免限流）
+bscscan_api_key = "YOUR_BSCSCAN_API_KEY"

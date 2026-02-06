@@ -26,6 +26,7 @@ services:
       - AUTO_MIGRATE=true
       - BSC_RPC_HTTP=${BSC_RPC_HTTP:-https://bsc-dataseed.bnbchain.org}
       - BSC_RPC_WS=${BSC_RPC_WS:-}
+      - BSCSCAN_API_KEY=${BSCSCAN_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
@@ -47,13 +48,17 @@ services:
     build:
       context: ./openclaw-skill
     environment:
-      - SERVER_API_URL=http://server:8080
+      - EASYMEME_SERVER_URL=http://server:8080
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - OPENCLAW_STATE_DIR=/tmp/openclaw-state
       - OPENCLAW_CONFIG_PATH=/tmp/openclaw-state/openclaw.json
+    volumes:
+      - openclaw_state:/tmp/openclaw-state
+      - ./openclaw.json:/app/openclaw.json:ro
     depends_on:
       - server
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  openclaw_state:

@@ -1,14 +1,17 @@
 {
   "id": "easymeme-openclaw-skill",
   "name": "EasyMeme OpenClaw Skill",
-  "version": "0.1.0",
-  "description": "OpenClaw skill plugin for the EasyMeme agent.",
+  "description": "EasyMeme analysis tools for BNB Chain tokens.",
   "configSchema": {
     "type": "object",
-    "properties": {},
-    "additionalProperties": true
+    "additionalProperties": false,
+    "properties": {
+      "serverUrl": {
+        "type": "string",
+        "description": "Override EASYMEME_SERVER_URL for API requests."
+      }
+    }
   },
-  "configDefaults": {},
   "skills": [
     "./skills"
   ],

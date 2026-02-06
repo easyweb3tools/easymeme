@@ -1,0 +1,9 @@
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "google/gemini-3-flash-preview"
+      }
+    }
+  }
+}
