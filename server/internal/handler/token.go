@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -23,7 +24,8 @@ func NewTokenHandler(repo *repository.Repository) *TokenHandler {
 func (h *TokenHandler) GetTokens(c *gin.Context) {
 	tokens, err := h.repo.GetLatestTokens(c.Request.Context(), 50)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("get tokens: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": tokens})
@@ -66,7 +68,8 @@ func (h *TokenHandler) GetPendingTokens(c *gin.Context) {
 
 	tokens, err := h.repo.GetPendingTokens(c.Request.Context(), limit, minLiquidity)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("get pending tokens: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 
@@ -84,6 +87,24 @@ func (h *TokenHandler) GetPendingTokens(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": resp})
+}
+
+func (h *TokenHandler) GetAnalyzedTokens(c *gin.Context) {
+	limit := 20
+	if v := c.Query("limit"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil {
+			limit = parsed
+		}
+	}
+
+	tokens, err := h.repo.GetAnalyzedTokens(c.Request.Context(), limit)
+	if err != nil {
+		log.Printf("get analyzed tokens: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": tokens})
 }
 
 type AnalyzeTokenRiskPayload struct {
@@ -176,6 +197,15 @@ func (h *TokenHandler) PostTokenAnalysis(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "riskLevel is required"})
 		return
 	}
+	if payload.RiskScore < 0 || payload.RiskScore > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "riskScore must be 0-100"})
+		return
+	}
+	validLevels := map[string]bool{"safe": true, "warning": true, "danger": true}
+	if !validLevels[strings.ToLower(payload.RiskLevel)] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid riskLevel"})
+		return
+	}
 
 	now := time.Now().UTC()
 	riskLevel := strings.ToLower(payload.RiskLevel)
@@ -203,7 +233,8 @@ func (h *TokenHandler) PostTokenAnalysis(c *gin.Context) {
 	}
 
 	if err := h.repo.UpdateTokenAnalysis(c.Request.Context(), address, updates); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("update token analysis: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 

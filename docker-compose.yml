@@ -27,6 +27,8 @@ services:
       - BSC_RPC_HTTP=${BSC_RPC_HTTP:-https://bsc-dataseed.bnbchain.org}
       - BSC_RPC_WS=${BSC_RPC_WS:-}
       - BSCSCAN_API_KEY=${BSCSCAN_API_KEY:-}
+      - EASYMEME_API_KEY=${EASYMEME_API_KEY:-}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
     depends_on:
       db:
         condition: service_healthy
@@ -50,6 +52,7 @@ services:
     environment:
       - EASYMEME_SERVER_URL=http://server:8080
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - EASYMEME_API_KEY=${EASYMEME_API_KEY:-}
       - OPENCLAW_STATE_DIR=/tmp/openclaw-state
       - OPENCLAW_CONFIG_PATH=/tmp/openclaw-state/openclaw.json
     volumes:

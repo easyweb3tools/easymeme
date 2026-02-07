@@ -1,6 +1,6 @@
 # EasyMeme - BNB Chain 自治 Agent 产品规格书
 
-> **本文档供 Codex 开发使用** | 最后更新: 2026-02-06
+> **本文档供 Codex 开发使用** | 最后更新: 2026-02-07
 
 ---
 
@@ -78,9 +78,9 @@
 | 方法 | 路径 | 描述 |
 |------|------|------|
 | GET | `/api/tokens/pending` | 获取待分析的代币列表 |
+| GET | `/api/tokens/analyzed` | 获取已分析代币列表 (供 Web) |
 | GET | `/api/tokens/:address` | 获取单个代币详情 |
 | POST | `/api/tokens/:address/analysis` | 回写分析结果 |
-| GET | `/api/tokens/analyzed` | 获取已分析代币列表 (供 Web) |
 | POST | `/api/trades` | 记录交易历史 |
 
 ### 3.3 数据模型
@@ -105,6 +105,12 @@ type Token struct {
     AnalyzedAt       time.Time
 }
 ```
+
+### 3.4 安全与校验
+
+- **CORS**: 只能允许配置的来源，不能使用 `*` + `AllowCredentials`
+- **API Key**: `POST /api/tokens/:address/analysis` 必须校验 `X-API-Key`
+- **输入校验**: `riskScore` 必须 0-100，`riskLevel` 只能是 SAFE/WARNING/DANGER
 
 ---
 
@@ -171,6 +177,7 @@ interface AnalyzeTokenRiskInput {
     holderDistribution?: HolderInfo[];
     creatorHistory?: CreatorTx[];
   };
+  analysis: AnalyzeTokenRiskOutput;
 }
 
 interface AnalyzeTokenRiskOutput {
@@ -242,7 +249,12 @@ AI 需要综合判断以下因素：
 | Trade | 一键买入/止盈止损设置 |
 | History | 交易历史记录 |
 
-### 5.3 与 Server 交互
+### 5.3 交易安全
+
+- **滑点保护**: 交易必须计算 `amountOutMin`，禁止 0 滑点
+- **合约地址配置**: `PANCAKE_ROUTER` 与 `WBNB` 从环境变量注入
+
+### 5.4 与 Server 交互
 
 - 只读取数据，不直接操作链
 - 交易由用户钱包签名后发送
@@ -266,7 +278,7 @@ services:
   openclaw:
     build: ./openclaw-skill
     depends_on: [server]
-    # 需要配置 OpenClaw Gateway
+    # 需提供 OpenClaw 配置文件与 API Key
     
   web:
     build: ./web
@@ -279,13 +291,27 @@ services:
 ```bash
 DATABASE_URL=postgres://...
 BSCSCAN_API_KEY=xxx
-BSC_RPC_URL=https://bsc-dataseed.binance.org
+BSC_RPC_HTTP=https://bsc-dataseed.bnbchain.org
+BSC_RPC_WS=wss://...
+EASYMEME_API_KEY=xxx
+CORS_ALLOWED_ORIGINS=http://localhost:3000
 ```
 
 **OpenClaw:**
 ```bash
 EASYMEME_SERVER_URL=http://server:8080
-# OpenClaw 自身的模型配置
+EASYMEME_API_KEY=xxx
+# OpenClaw 自身的模型配置 (openclaw.json)
+agents.defaults.model.primary = "google/gemini-3-flash"
+GEMINI_API_KEY=xxx
+```
+
+**Web:**
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+NEXT_PUBLIC_PANCAKE_ROUTER=0x10ED43C718714eb63d5aA57B78B54704E256024E
+NEXT_PUBLIC_WBNB=0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
 ```
 
 ---
@@ -296,7 +322,9 @@ EASYMEME_SERVER_URL=http://server:8080
 - [ ] 抓取 PancakeSwap 新池数据
 - [ ] 存储代币信息到 PostgreSQL
 - [ ] 提供 `/api/tokens/pending` 接口
+- [ ] 提供 `/api/tokens/analyzed` 接口
 - [ ] 提供 `/api/tokens/:address/analysis` 接口接收分析结果
+  - [ ] 校验 `X-API-Key`
 
 ### OpenClaw 必须实现:
 - [ ] `fetchPendingTokens` Tool

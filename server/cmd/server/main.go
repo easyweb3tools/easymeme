@@ -49,7 +49,7 @@ func main() {
 	tokenHandler := handler.NewTokenHandler(repo)
 	tradeHandler := handler.NewTradeHandler(repo)
 
-	r := router.Setup(tokenHandler, tradeHandler, wsHub)
+	r := router.Setup(cfg, tokenHandler, tradeHandler, wsHub)
 
 	go func() {
 		log.Printf("Server starting on port %s", cfg.Port)

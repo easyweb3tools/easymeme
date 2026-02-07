@@ -1,6 +1,9 @@
 package router
 
 import (
+	"net/http"
+
+	"easymeme/internal/config"
 	"easymeme/internal/handler"
 
 	"github.com/gin-contrib/cors"
@@ -8,6 +11,7 @@ import (
 )
 
 func Setup(
+	cfg *config.Config,
 	tokenHandler *handler.TokenHandler,
 	tradeHandler *handler.TradeHandler,
 	wsHub *handler.WebSocketHub,
@@ -15,9 +19,9 @@ func Setup(
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		AllowOrigins:     cfg.CorsAllowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-API-Key"},
 		AllowCredentials: true,
 	}))
 
@@ -30,7 +34,8 @@ func Setup(
 		api.GET("/tokens", tokenHandler.GetTokens)
 		api.GET("/tokens/:address", tokenHandler.GetToken)
 		api.GET("/tokens/pending", tokenHandler.GetPendingTokens)
-		api.POST("/tokens/:address/analysis", tokenHandler.PostTokenAnalysis)
+		api.GET("/tokens/analyzed", tokenHandler.GetAnalyzedTokens)
+		api.POST("/tokens/:address/analysis", apiKeyMiddleware(cfg.ApiKey), tokenHandler.PostTokenAnalysis)
 
 		api.POST("/trades", tradeHandler.CreateTrade)
 		api.GET("/trades", tradeHandler.GetTrades)
@@ -40,4 +45,20 @@ func Setup(
 	r.GET("/ws", wsHub.HandleWebSocket)
 
 	return r
+}
+
+func apiKeyMiddleware(expected string) gin.HandlerFunc {
+	if expected == "" {
+		return func(c *gin.Context) {
+			c.Next()
+		}
+	}
+	return func(c *gin.Context) {
+		key := c.GetHeader("X-API-Key")
+		if key != expected {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+		c.Next()
+	}
 }

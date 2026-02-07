@@ -10,11 +10,13 @@ import (
 )
 
 type Config struct {
-	Port          string
-	DatabaseURL   string
-	BscRpcHTTP    string
-	BscRpcWS      string
-	BscScanAPIKey string
+	Port               string
+	DatabaseURL        string
+	BscRpcHTTP         string
+	BscRpcWS           string
+	BscScanAPIKey      string
+	ApiKey             string
+	CorsAllowedOrigins []string
 }
 
 func Load() (*Config, error) {
@@ -35,6 +37,8 @@ func Load() (*Config, error) {
 	v.SetDefault("bsc_rpc_http", "https://bsc-dataseed.binance.org")
 	v.SetDefault("bsc_rpc_ws", "")
 	v.SetDefault("bscscan_api_key", "")
+	v.SetDefault("api_key", "")
+	v.SetDefault("cors_allowed_origins", "http://localhost:3000")
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
@@ -43,6 +47,8 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("bsc_rpc_http", "bsc_rpc_http", "BSC_RPC_HTTP")
 	_ = v.BindEnv("bsc_rpc_ws", "bsc_rpc_ws", "BSC_RPC_WS")
 	_ = v.BindEnv("bscscan_api_key", "bscscan_api_key", "BSCSCAN_API_KEY")
+	_ = v.BindEnv("api_key", "api_key", "EASYMEME_API_KEY", "API_KEY")
+	_ = v.BindEnv("cors_allowed_origins", "cors_allowed_origins", "CORS_ALLOWED_ORIGINS")
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
@@ -51,10 +57,24 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		Port:          v.GetString("port"),
-		DatabaseURL:   v.GetString("database_url"),
-		BscRpcHTTP:    v.GetString("bsc_rpc_http"),
-		BscRpcWS:      v.GetString("bsc_rpc_ws"),
-		BscScanAPIKey: v.GetString("bscscan_api_key"),
+		Port:               v.GetString("port"),
+		DatabaseURL:        v.GetString("database_url"),
+		BscRpcHTTP:         v.GetString("bsc_rpc_http"),
+		BscRpcWS:           v.GetString("bsc_rpc_ws"),
+		BscScanAPIKey:      v.GetString("bscscan_api_key"),
+		ApiKey:             v.GetString("api_key"),
+		CorsAllowedOrigins: splitOrigins(v.GetString("cors_allowed_origins")),
 	}, nil
+}
+
+func splitOrigins(raw string) []string {
+	parts := strings.Split(raw, ",")
+	origins := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			origins = append(origins, trimmed)
+		}
+	}
+	return origins
 }

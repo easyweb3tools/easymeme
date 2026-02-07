@@ -52,12 +52,13 @@ export GEMINI_API_KEY=your_key
 export BSC_RPC_HTTP=https://your-bsc-http
 export BSC_RPC_WS=wss://your-bsc-ws
 export BSCSCAN_API_KEY=your_bscscan_key
+export EASYMEME_API_KEY=your_api_key
 
 docker compose up -d --build
 ```
 
-> OpenClaw 官方默认 provider 是 `anthropic`。如果要切换到 Gemini，需要在配置中设置：
-> `agents.defaults.model.primary = "google/gemini-3-flash-preview"`，并提供 `GEMINI_API_KEY`。
+> OpenClaw 官方默认 provider 是 `anthropic`。如果要切换到 Gemini，需要在配置中设置模型，如：
+> `agents.defaults.model.primary = "google/gemini-3-flash"`，并提供 `GEMINI_API_KEY`。
 
 本仓库提供了默认的 `openclaw.json`（已设置为 Gemini）。
 如需使用其他 provider，请根据官方文档设置对应的 `API_KEY` 环境变量。
@@ -83,6 +84,8 @@ export AUTO_MIGRATE=true
 export BSC_RPC_HTTP=https://your-bsc-http
 export BSC_RPC_WS=wss://your-bsc-ws
 export BSCSCAN_API_KEY=your_bscscan_key
+export EASYMEME_API_KEY=your_api_key
+export CORS_ALLOWED_ORIGINS=http://localhost:3000
 go run ./cmd/server
 ```
 
@@ -92,6 +95,8 @@ cd web
 npm install
 export NEXT_PUBLIC_API_URL=http://localhost:8080
 export NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+export NEXT_PUBLIC_PANCAKE_ROUTER=0x10ED43C718714eb63d5aA57B78B54704E256024E
+export NEXT_PUBLIC_WBNB=0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
 npm run dev
 ```
 
@@ -99,7 +104,8 @@ npm run dev
 ```bash
 cd openclaw-skill
 npm install && npm run build
-export SERVER_API_URL=http://localhost:8080
+export EASYMEME_SERVER_URL=http://localhost:8080
+export EASYMEME_API_KEY=your_api_key
 # ~/.openclaw/openclaw.json 里配置默认provider为Gemini时，设置GEMINI_API_KEY环境变量
 # 其他provider参考官方文档 https://docs.openclaw.ai/concepts/model-providers
 export GEMINI_API_KEY=your_key 
@@ -120,6 +126,17 @@ openclaw agent --local --session-id easymeme --message "获取待分析代币 ->
 | **多端响应** | Channels | Telegram/Discord 推送发现 |
 
 **核心价值**：OpenClaw 让 EasyMeme 从"工具"变成"会思考的 Agent"。
+
+---
+
+## 🧠 Memory 未实现/后续
+
+当前版本尚未落地 OpenClaw Memory 持久化（风险模式、已分析代币去重、金狗历史表现等）。
+后续计划：
+
+- 接入 OpenClaw Memory（长期记忆）
+- 记录已分析代币，避免重复分析
+- 累积风险模式与金狗表现
 
 ---
 

@@ -21,10 +21,12 @@ async function requestJson(
 ): Promise<unknown> {
   const base = resolveServerUrl(overrideUrl);
   const url = `${base}${path}`;
+  const apiKey = process.env.EASYMEME_API_KEY?.trim();
   const res = await fetch(url, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(apiKey ? { "X-API-Key": apiKey } : {}),
       ...(init?.headers ?? {})
     }
   });

@@ -1,6 +1,7 @@
 package handler
 
 import (
+    "log"
     "net/http"
 
     "easymeme/internal/model"
@@ -46,7 +47,8 @@ func (h *TradeHandler) CreateTrade(c *gin.Context) {
     }
 
     if err := h.repo.CreateTrade(c.Request.Context(), trade); err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        log.Printf("create trade: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
         return
     }
 
@@ -62,7 +64,8 @@ func (h *TradeHandler) GetTrades(c *gin.Context) {
 
     trades, err := h.repo.GetTradesByUser(c.Request.Context(), user, 50)
     if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        log.Printf("get trades: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
         return
     }
 
@@ -81,7 +84,8 @@ func (h *TradeHandler) UpdateTradeStatus(c *gin.Context) {
     }
 
     if err := h.repo.UpdateTradeStatus(c.Request.Context(), txHash, req.Status); err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        log.Printf("update trade status: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
         return
     }
 

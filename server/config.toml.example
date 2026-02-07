@@ -5,3 +5,9 @@ bsc_rpc_http = "https://bsc-dataseed.bnbchain.org"
 bsc_rpc_ws = "wss://bsc-mainnet.nodereal.io/ws/v1/YOUR_API_KEY"
 # BSCScan API Key（可选，但建议提供以避免限流）
 bscscan_api_key = "YOUR_BSCSCAN_API_KEY"
+
+# API Key（用于提交分析结果，留空则不校验）
+api_key = ""
+
+# CORS 允许的来源（逗号分隔）
+cors_allowed_origins = "http://localhost:3000"

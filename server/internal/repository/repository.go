@@ -64,6 +64,16 @@ func (r *Repository) GetPendingTokens(ctx context.Context, limit int, minLiquidi
 	return tokens, err
 }
 
+func (r *Repository) GetAnalyzedTokens(ctx context.Context, limit int) ([]model.Token, error) {
+	var tokens []model.Token
+	err := r.db.WithContext(ctx).
+		Where("analysis_status = ?", "analyzed").
+		Order("analyzed_at DESC").
+		Limit(limit).
+		Find(&tokens).Error
+	return tokens, err
+}
+
 func (r *Repository) UpdateToken(ctx context.Context, token *model.Token) error {
 	return r.db.WithContext(ctx).Save(token).Error
 }
