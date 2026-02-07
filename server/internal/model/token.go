@@ -22,6 +22,7 @@ type Token struct {
 	RiskDetails      datatypes.JSON  `json:"risk_details"`
 	AnalysisResult   datatypes.JSON  `json:"analysis_result"`
 	IsGoldenDog      bool            `gorm:"default:false" json:"is_golden_dog"`
+	GoldenDogScore   int             `gorm:"default:0" json:"golden_dog_score"`
 	IsHoneypot       bool            `gorm:"default:false" json:"is_honeypot"`
 	BuyTax           float64         `json:"buy_tax"`
 	SellTax          float64         `json:"sell_tax"`
@@ -33,6 +34,46 @@ type Token struct {
 
 func (Token) TableName() string {
 	return "tokens"
+}
+
+func (t *Token) GoldenDogPhase() string {
+	age := time.Since(t.CreatedAt)
+	switch {
+	case age <= 30*time.Minute:
+		return "EARLY"
+	case age <= 2*time.Hour:
+		return "PEAK"
+	case age <= 6*time.Hour:
+		return "DECLINING"
+	default:
+		return "EXPIRED"
+	}
+}
+
+func (t *Token) TimeDecayFactor() float64 {
+	age := time.Since(t.CreatedAt)
+	switch {
+	case age <= 30*time.Minute:
+		return 1.0
+	case age <= 2*time.Hour:
+		// Linear from 1.0 at 30m to 0.8 at 2h.
+		progress := float64(age-30*time.Minute) / float64(90*time.Minute)
+		return 1.0 - 0.2*progress
+	case age <= 6*time.Hour:
+		// Linear from 0.8 at 2h to 0.5 at 6h.
+		progress := float64(age-2*time.Hour) / float64(4*time.Hour)
+		return 0.8 - 0.3*progress
+	default:
+		return 0.4
+	}
+}
+
+func (t *Token) EffectiveScore() int {
+	score := float64(t.GoldenDogScore) * t.TimeDecayFactor()
+	if score < 0 {
+		return 0
+	}
+	return int(score + 0.5)
 }
 
 type RiskDetailsJSON struct {

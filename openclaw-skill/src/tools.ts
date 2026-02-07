@@ -1,6 +1,22 @@
 import { Type } from "@sinclair/typebox";
 import { jsonResult, readNumberParam, readStringParam } from "openclaw/plugin-sdk";
-import { fetchPendingTokens, submitAnalysis } from "./server-api.js";
+import {
+  createWallet,
+  executeTrade,
+  fetchPendingTokens,
+  getWalletBalance,
+  submitAnalysis,
+  upsertWalletConfig
+} from "./server-api.js";
+import {
+  applyFeedback,
+  estimateScore,
+  loadMemory,
+  saveMemory,
+  updateWeights,
+  updateRulePerformanceOnOutcome,
+  upsertUserReputation
+} from "./memory.js";
 
 type AnyAgentTool = any;
 const HolderInfoSchema = Type.Object(
@@ -56,6 +72,7 @@ const AnalysisSchema = Type.Object({
     Type.Literal("DANGER")
   ]),
   isGoldenDog: Type.Boolean(),
+  goldenDogScore: Type.Optional(Type.Number()),
   riskFactors: RiskFactorsSchema,
   reasoning: Type.String(),
   recommendation: Type.String()
@@ -73,6 +90,56 @@ const AnalyzeTokenRiskSchema = Type.Object({
 const SubmitAnalysisSchema = Type.Object({
   tokenAddress: Type.String(),
   analysis: AnalysisSchema
+});
+
+const EstimateGoldenDogScoreSchema = Type.Object({
+  riskScore: Type.Number(),
+  isGoldenDog: Type.Boolean(),
+  riskFactors: Type.Optional(RiskFactorsSchema)
+});
+
+const RecordOutcomeSchema = Type.Object({
+  tokenAddress: Type.String(),
+  outcome: Type.Union([Type.Literal("MOON"), Type.Literal("RUG"), Type.Literal("FLAT")]),
+  maxGain: Type.Optional(Type.Number()),
+  maxLoss: Type.Optional(Type.Number()),
+  lessonsLearned: Type.Optional(Type.String()),
+  analysis: Type.Optional(
+    Type.Object({
+      isGoldenDog: Type.Optional(Type.Boolean())
+    })
+  )
+});
+
+const ExecuteTradeSchema = Type.Object({
+  tokenAddress: Type.String(),
+  tokenSymbol: Type.Optional(Type.String()),
+  type: Type.Union([Type.Literal("BUY"), Type.Literal("SELL")]),
+  amountIn: Type.Optional(Type.String()),
+  amountOut: Type.Optional(Type.String()),
+  goldenDogScore: Type.Optional(Type.Number()),
+  decisionReason: Type.Optional(Type.String()),
+  strategyUsed: Type.Optional(Type.String()),
+  userId: Type.Optional(Type.String()),
+  profitLoss: Type.Optional(Type.Number()),
+  force: Type.Optional(Type.Boolean())
+});
+
+const WalletConfigSchema = Type.Object({
+  userId: Type.Optional(Type.String()),
+  config: Type.Optional(Type.Object({}, { additionalProperties: true }))
+});
+
+const RecordUserFeedbackSchema = Type.Object({
+  tokenAddress: Type.String(),
+  feedbackType: Type.Union([
+    Type.Literal("CONFIRM_GOLDEN"),
+    Type.Literal("DENY_GOLDEN"),
+    Type.Literal("REPORT_RUG")
+  ]),
+  userId: Type.String(),
+  channel: Type.Union([Type.Literal("OPENCLAW_DIALOG"), Type.Literal("TELEGRAM")]),
+  userReputation: Type.Optional(Type.Number())
 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -99,6 +166,22 @@ function validateAnalysis(value: unknown): asserts value is Record<string, unkno
   if (!isRecord(value.riskFactors)) {
     throw new Error("analysis.riskFactors is required");
   }
+}
+
+async function ensureGoldenDogScore(analysis: Record<string, unknown>) {
+  if (typeof analysis.goldenDogScore === "number") {
+    return;
+  }
+  const memory = await loadMemory();
+  const riskScore =
+    typeof analysis.riskScore === "number" ? analysis.riskScore : 0;
+  const isGoldenDog = Boolean(analysis.isGoldenDog);
+  const riskFactors = analysis.riskFactors as any;
+  analysis.goldenDogScore = estimateScore(memory.weights, {
+    riskScore,
+    isGoldenDog,
+    riskFactors
+  });
 }
 
 export function createFetchPendingTokensTool(options?: { serverUrl?: string }): AnyAgentTool {
@@ -129,6 +212,7 @@ export function createAnalyzeTokenRiskTool(): AnyAgentTool {
       const token = params.token as unknown;
       const analysis = params.analysis as unknown;
       validateAnalysis(analysis);
+      await ensureGoldenDogScore(analysis as Record<string, unknown>);
       return jsonResult({ ok: true, token, analysis });
     }
   };
@@ -144,8 +228,202 @@ export function createSubmitAnalysisTool(options?: { serverUrl?: string }): AnyA
       const tokenAddress = readStringParam(params, "tokenAddress", { required: true });
       const analysis = params.analysis as unknown;
       validateAnalysis(analysis);
+      await ensureGoldenDogScore(analysis as Record<string, unknown>);
       const result = await submitAnalysis(tokenAddress, analysis as any, options?.serverUrl);
       return jsonResult({ ok: true, result });
+    }
+  };
+}
+
+export function createEstimateGoldenDogScoreTool(): AnyAgentTool {
+  return {
+    label: "Estimate Golden Dog Score",
+    name: "estimateGoldenDogScore",
+    description:
+      "Estimate golden dog score using locally learned weights stored in OpenClaw memory.",
+    parameters: EstimateGoldenDogScoreSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const memory = await loadMemory();
+      const riskScore = readNumberParam(params, "riskScore");
+      if (typeof riskScore !== "number") {
+        throw new Error("riskScore is required");
+      }
+      const isGoldenDog = Boolean(params.isGoldenDog);
+      const riskFactors = params.riskFactors as any;
+      const score = estimateScore(memory.weights, { riskScore, isGoldenDog, riskFactors });
+      return jsonResult({ score, weights: memory.weights });
+    }
+  };
+}
+
+export function createRecordOutcomeTool(): AnyAgentTool {
+  return {
+    label: "Record Outcome",
+    name: "recordOutcome",
+    description:
+      "Record a trade outcome and update learned weights stored in OpenClaw memory.",
+    parameters: RecordOutcomeSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const tokenAddress = readStringParam(params, "tokenAddress", { required: true });
+      const outcome = readStringParam(params, "outcome", { required: true }) as
+        | "MOON"
+        | "RUG"
+        | "FLAT";
+      const maxGain = readNumberParam(params, "maxGain");
+      const maxLoss = readNumberParam(params, "maxLoss");
+      const analysis = params.analysis as { isGoldenDog?: boolean } | undefined;
+
+      const memory = await loadMemory();
+      memory.outcomes.push({
+        tokenAddress,
+        outcome,
+        maxGain: typeof maxGain === "number" ? maxGain : undefined,
+        maxLoss: typeof maxLoss === "number" ? maxLoss : undefined,
+        timestamp: new Date().toISOString()
+      });
+      memory.weights = updateWeights(memory.weights, {
+        outcome,
+        isGoldenDog: analysis?.isGoldenDog
+      });
+      memory.rulePerformance = updateRulePerformanceOnOutcome(memory.rulePerformance, {
+        ruleId: "golden_dog_decision",
+        outcome,
+        isGoldenDog: analysis?.isGoldenDog
+      });
+      memory.updatedAt = new Date().toISOString();
+      await saveMemory(memory);
+
+      return jsonResult({
+        ok: true,
+        weights: memory.weights,
+        rulePerformance: memory.rulePerformance
+      });
+    }
+  };
+}
+
+export function createExecuteTradeTool(options?: { serverUrl?: string; userId?: string }): AnyAgentTool {
+  return {
+    label: "Execute Trade",
+    name: "executeTrade",
+    description:
+      "Execute an auto trade using managed wallet and record it as an AI trade.",
+    parameters: ExecuteTradeSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const tokenAddress = readStringParam(params, "tokenAddress", { required: true });
+      const tokenSymbol = readStringParam(params, "tokenSymbol");
+      const type = readStringParam(params, "type", { required: true }) as "BUY" | "SELL";
+      const amountIn = readStringParam(params, "amountIn");
+      const amountOut = readStringParam(params, "amountOut");
+      const decisionReason = readStringParam(params, "decisionReason");
+      const strategyUsed = readStringParam(params, "strategyUsed");
+      const goldenDogScore = readNumberParam(params, "goldenDogScore");
+      const profitLoss = readNumberParam(params, "profitLoss");
+      const force = Boolean(params.force);
+      const userId =
+        readStringParam(params, "userId") ||
+        options?.userId ||
+        process.env.EASYMEME_USER_ID ||
+        "default";
+
+      try {
+        await getWalletBalance(userId, options?.serverUrl);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes("404")) {
+          await createWallet(userId, options?.serverUrl);
+        } else {
+          throw err;
+        }
+      }
+
+      const result = await executeTrade(
+        {
+          userId,
+          tokenAddress,
+          tokenSymbol: tokenSymbol || undefined,
+          type,
+          amountIn: amountIn || undefined,
+          amountOut: amountOut || undefined,
+          goldenDogScore: typeof goldenDogScore === "number" ? goldenDogScore : undefined,
+          decisionReason: decisionReason || undefined,
+          strategyUsed: strategyUsed || undefined,
+          profitLoss: typeof profitLoss === "number" ? profitLoss : undefined,
+          force: force ? true : undefined,
+        },
+        options?.serverUrl,
+      );
+
+      return jsonResult({ ok: true, result });
+    }
+  };
+}
+
+export function createUpsertWalletConfigTool(options?: { serverUrl?: string; userId?: string }): AnyAgentTool {
+  return {
+    label: "Upsert Wallet Config",
+    name: "upsertWalletConfig",
+    description: "Update managed wallet auto-trade config.",
+    parameters: WalletConfigSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const userId =
+        readStringParam(params, "userId") ||
+        options?.userId ||
+        process.env.EASYMEME_USER_ID ||
+        "default";
+      const config =
+        (params.config as Record<string, unknown> | undefined) ?? {};
+      const result = await upsertWalletConfig(userId, config, options?.serverUrl);
+      return jsonResult({ ok: true, result });
+    }
+  };
+}
+
+export function createRecordUserFeedbackTool(): AnyAgentTool {
+  return {
+    label: "Record User Feedback",
+    name: "recordUserFeedback",
+    description:
+      "Record user feedback from OpenClaw Dialog or Telegram and update local memory weights.",
+    parameters: RecordUserFeedbackSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const tokenAddress = readStringParam(params, "tokenAddress", { required: true });
+      const feedbackType = readStringParam(params, "feedbackType", { required: true }) as
+        | "CONFIRM_GOLDEN"
+        | "DENY_GOLDEN"
+        | "REPORT_RUG";
+      const userId = readStringParam(params, "userId", { required: true });
+      const channel = readStringParam(params, "channel", { required: true }) as
+        | "OPENCLAW_DIALOG"
+        | "TELEGRAM";
+      const rep = readNumberParam(params, "userReputation");
+      const reputation = typeof rep === "number" ? Math.max(0, Math.min(100, rep)) : 30;
+      const weight = reputation / 100;
+
+      const memory = await loadMemory();
+      const feedback = {
+        tokenAddress,
+        feedbackType,
+        userId,
+        channel,
+        userReputation: reputation,
+        feedbackWeight: weight,
+        timestamp: new Date().toISOString()
+      };
+      memory.feedbacks = Array.isArray(memory.feedbacks) ? memory.feedbacks : [];
+      memory.feedbacks.push(feedback);
+      memory.userReputations = upsertUserReputation(memory.userReputations, {
+        userId,
+        reputation
+      });
+      memory.weights = applyFeedback(memory.weights, {
+        feedbackType,
+        weight
+      });
+      memory.updatedAt = new Date().toISOString();
+      await saveMemory(memory);
+
+      return jsonResult({ ok: true, weights: memory.weights, feedback });
     }
   };
 }

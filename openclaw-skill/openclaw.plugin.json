@@ -9,6 +9,10 @@
       "serverUrl": {
         "type": "string",
         "description": "Override EASYMEME_SERVER_URL for API requests."
+      },
+      "userId": {
+        "type": "string",
+        "description": "Default user ID for managed wallet and AI trades."
       }
     }
   },

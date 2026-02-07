@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	_ "easymeme/docs"
 	"easymeme/internal/config"
 	"easymeme/internal/handler"
 	"easymeme/internal/repository"
@@ -15,6 +16,15 @@ import (
 	"easymeme/pkg/ethereum"
 )
 
+//go:generate swag init -g cmd/server/main.go -o docs
+
+// @title EasyMeme API
+// @version 0.1
+// @description EasyMeme server API for token analysis and discovery.
+// @BasePath /
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name X-API-Key
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -48,8 +58,10 @@ func main() {
 
 	tokenHandler := handler.NewTokenHandler(repo)
 	tradeHandler := handler.NewTradeHandler(repo)
+	walletHandler := handler.NewWalletHandler(repo, ethClient)
+	aiTradeHandler := handler.NewAITradeHandler(repo)
 
-	r := router.Setup(cfg, tokenHandler, tradeHandler, wsHub)
+	r := router.Setup(cfg, tokenHandler, tradeHandler, walletHandler, aiTradeHandler, wsHub)
 
 	go func() {
 		log.Printf("Server starting on port %s", cfg.Port)

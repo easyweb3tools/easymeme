@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"easymeme/internal/model"
 	"easymeme/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +23,73 @@ func NewTokenHandler(repo *repository.Repository) *TokenHandler {
 	return &TokenHandler{repo: repo}
 }
 
+func toTokenDTO(token model.Token) TokenResponseDTO {
+	return TokenResponseDTO{
+		ID:               token.ID,
+		Address:          token.Address,
+		Name:             token.Name,
+		Symbol:           token.Symbol,
+		Decimals:         token.Decimals,
+		PairAddress:      token.PairAddress,
+		Dex:              token.Dex,
+		InitialLiquidity: token.InitialLiquidity.String(),
+		AnalysisStatus:   token.AnalysisStatus,
+		RiskScore:        token.RiskScore,
+		RiskLevel:        token.RiskLevel,
+		IsGoldenDog:      token.IsGoldenDog,
+		GoldenDogScore:   token.GoldenDogScore,
+		IsHoneypot:       token.IsHoneypot,
+		BuyTax:           token.BuyTax,
+		SellTax:          token.SellTax,
+		CreatorAddress:   token.CreatorAddress,
+		CreatedAt:        token.CreatedAt,
+		UpdatedAt:        token.UpdatedAt,
+		AnalyzedAt:       token.AnalyzedAt,
+	}
+}
+
+func toTokenDTOList(tokens []model.Token) []TokenResponseDTO {
+	resp := make([]TokenResponseDTO, 0, len(tokens))
+	for _, token := range tokens {
+		resp = append(resp, toTokenDTO(token))
+	}
+	return resp
+}
+
+type TokenResponseDTO struct {
+	ID               string     `json:"id"`
+	Address          string     `json:"address"`
+	Name             string     `json:"name"`
+	Symbol           string     `json:"symbol"`
+	Decimals         int        `json:"decimals"`
+	PairAddress      string     `json:"pair_address"`
+	Dex              string     `json:"dex"`
+	InitialLiquidity string     `json:"initial_liquidity"`
+	AnalysisStatus   string     `json:"analysis_status"`
+	RiskScore        int        `json:"risk_score"`
+	RiskLevel        string     `json:"risk_level"`
+	IsGoldenDog      bool       `json:"is_golden_dog"`
+	GoldenDogScore   int        `json:"golden_dog_score"`
+	IsHoneypot       bool       `json:"is_honeypot"`
+	BuyTax           float64    `json:"buy_tax"`
+	SellTax          float64    `json:"sell_tax"`
+	CreatorAddress   string     `json:"creator_address"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	AnalyzedAt       *time.Time `json:"analyzed_at"`
+}
+
+type TokenListResponseEnvelope struct {
+	Data []TokenResponseDTO `json:"data"`
+}
+
+// GetTokens godoc
+// @Summary Get latest tokens
+// @Description List latest tokens
+// @Tags tokens
+// @Success 200 {object} TokenListResponseEnvelope
+// @Failure 500 {object} map[string]string
+// @Router /api/tokens [get]
 func (h *TokenHandler) GetTokens(c *gin.Context) {
 	tokens, err := h.repo.GetLatestTokens(c.Request.Context(), 50)
 	if err != nil {
@@ -28,9 +97,21 @@ func (h *TokenHandler) GetTokens(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": tokens})
+	c.JSON(http.StatusOK, gin.H{"data": toTokenDTOList(tokens)})
 }
 
+type TokenResponseEnvelope struct {
+	Data TokenResponseDTO `json:"data"`
+}
+
+// GetToken godoc
+// @Summary Get token
+// @Description Get token by address
+// @Tags tokens
+// @Param address path string true "Token address"
+// @Success 200 {object} TokenResponseEnvelope
+// @Failure 404 {object} map[string]string
+// @Router /api/tokens/{address} [get]
 func (h *TokenHandler) GetToken(c *gin.Context) {
 	address := c.Param("address")
 	token, err := h.repo.GetTokenByAddress(c.Request.Context(), address)
@@ -38,7 +119,83 @@ func (h *TokenHandler) GetToken(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "token not found"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": token})
+	c.JSON(http.StatusOK, gin.H{"data": toTokenDTO(*token)})
+}
+
+type TokenDetailResponse struct {
+	ID              string                 `json:"id"`
+	Address         string                 `json:"address"`
+	Name            string                 `json:"name"`
+	Symbol          string                 `json:"symbol"`
+	PairAddress     string                 `json:"pairAddress"`
+	Dex             string                 `json:"dex"`
+	Liquidity       float64                `json:"liquidity"`
+	CreatorAddress  string                 `json:"creatorAddress"`
+	CreatedAt       time.Time              `json:"createdAt"`
+	AnalyzedAt      *time.Time             `json:"analyzedAt"`
+	RiskScore       int                    `json:"riskScore"`
+	RiskLevel       string                 `json:"riskLevel"`
+	IsGoldenDog     bool                   `json:"isGoldenDog"`
+	GoldenDogScore  int                    `json:"goldenDogScore"`
+	EffectiveScore  int                    `json:"effectiveScore"`
+	TimeDecayFactor float64                `json:"timeDecayFactor"`
+	Phase           string                 `json:"phase"`
+	RiskDetails     map[string]interface{} `json:"riskDetails,omitempty"`
+	AnalysisResult  map[string]interface{} `json:"analysisResult,omitempty"`
+}
+
+type TokenDetailResponseEnvelope struct {
+	Data TokenDetailResponse `json:"data"`
+}
+
+// GetTokenDetail godoc
+// @Summary Get token detail
+// @Description Get token detail including scores and time decay metadata
+// @Tags tokens
+// @Param address path string true "Token address"
+// @Success 200 {object} TokenDetailResponseEnvelope
+// @Failure 404 {object} map[string]string
+// @Router /api/tokens/{address}/detail [get]
+func (h *TokenHandler) GetTokenDetail(c *gin.Context) {
+	address := c.Param("address")
+	token, err := h.repo.GetTokenByAddress(c.Request.Context(), address)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "token not found"})
+		return
+	}
+
+	var riskDetails map[string]interface{}
+	if len(token.RiskDetails) > 0 {
+		_ = json.Unmarshal(token.RiskDetails, &riskDetails)
+	}
+	var analysisResult map[string]interface{}
+	if len(token.AnalysisResult) > 0 {
+		_ = json.Unmarshal(token.AnalysisResult, &analysisResult)
+	}
+
+	resp := TokenDetailResponse{
+		ID:              token.ID,
+		Address:         token.Address,
+		Name:            token.Name,
+		Symbol:          token.Symbol,
+		PairAddress:     token.PairAddress,
+		Dex:             token.Dex,
+		Liquidity:       token.InitialLiquidity.InexactFloat64(),
+		CreatorAddress:  token.CreatorAddress,
+		CreatedAt:       token.CreatedAt,
+		AnalyzedAt:      token.AnalyzedAt,
+		RiskScore:       token.RiskScore,
+		RiskLevel:       token.RiskLevel,
+		IsGoldenDog:     token.IsGoldenDog,
+		GoldenDogScore:  token.GoldenDogScore,
+		EffectiveScore:  token.EffectiveScore(),
+		TimeDecayFactor: token.TimeDecayFactor(),
+		Phase:           token.GoldenDogPhase(),
+		RiskDetails:     riskDetails,
+		AnalysisResult:  analysisResult,
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": resp})
 }
 
 type PendingTokenResponse struct {
@@ -51,6 +208,19 @@ type PendingTokenResponse struct {
 	PairAddress    string    `json:"pairAddress"`
 }
 
+type PendingTokenListResponseEnvelope struct {
+	Data []PendingTokenResponse `json:"data"`
+}
+
+// GetPendingTokens godoc
+// @Summary Get pending tokens
+// @Description List tokens pending analysis
+// @Tags tokens
+// @Param limit query int false "Limit" default(10)
+// @Param min_liquidity query number false "Min liquidity"
+// @Success 200 {object} PendingTokenListResponseEnvelope
+// @Failure 500 {object} map[string]string
+// @Router /api/tokens/pending [get]
 func (h *TokenHandler) GetPendingTokens(c *gin.Context) {
 	limit := 10
 	if v := c.Query("limit"); v != "" {
@@ -89,6 +259,18 @@ func (h *TokenHandler) GetPendingTokens(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": resp})
 }
 
+type AnalyzedTokenListResponseEnvelope struct {
+	Data []TokenResponseDTO `json:"data"`
+}
+
+// GetAnalyzedTokens godoc
+// @Summary Get analyzed tokens
+// @Description List analyzed tokens
+// @Tags tokens
+// @Param limit query int false "Limit" default(20)
+// @Success 200 {object} AnalyzedTokenListResponseEnvelope
+// @Failure 500 {object} map[string]string
+// @Router /api/tokens/analyzed [get]
 func (h *TokenHandler) GetAnalyzedTokens(c *gin.Context) {
 	limit := 20
 	if v := c.Query("limit"); v != "" {
@@ -104,13 +286,114 @@ func (h *TokenHandler) GetAnalyzedTokens(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": tokens})
+	c.JSON(http.StatusOK, gin.H{"data": toTokenDTOList(tokens)})
+}
+
+type GoldenDogResponse struct {
+	Address         string     `json:"address"`
+	Name            string     `json:"name"`
+	Symbol          string     `json:"symbol"`
+	PairAddress     string     `json:"pairAddress"`
+	Liquidity       float64    `json:"liquidity"`
+	RiskScore       int        `json:"riskScore"`
+	RiskLevel       string     `json:"riskLevel"`
+	IsGoldenDog     bool       `json:"isGoldenDog"`
+	GoldenDogScore  int        `json:"goldenDogScore"`
+	EffectiveScore  int        `json:"effectiveScore"`
+	TimeDecayFactor float64    `json:"timeDecayFactor"`
+	Phase           string     `json:"phase"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	AnalyzedAt      *time.Time `json:"analyzedAt"`
+}
+
+type GoldenDogListResponseEnvelope struct {
+	Data []GoldenDogResponse `json:"data"`
+}
+
+// GetGoldenDogs godoc
+// @Summary Get golden dog tokens
+// @Description List golden dog tokens sorted by effective score and excluding expired
+// @Tags tokens
+// @Param limit query int false "Limit" default(20)
+// @Success 200 {object} GoldenDogListResponseEnvelope
+// @Failure 500 {object} map[string]string
+// @Router /api/tokens/golden-dogs [get]
+func (h *TokenHandler) GetGoldenDogs(c *gin.Context) {
+	limit := 20
+	if v := c.Query("limit"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil {
+			limit = parsed
+		}
+	}
+
+	fetchLimit := limit * 5
+	if fetchLimit < 20 {
+		fetchLimit = 20
+	}
+	if fetchLimit > 200 {
+		fetchLimit = 200
+	}
+
+	tokens, err := h.repo.GetGoldenDogTokens(c.Request.Context(), fetchLimit)
+	if err != nil {
+		log.Printf("get golden dog tokens: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	resp := make([]GoldenDogResponse, 0, len(tokens))
+	for _, token := range tokens {
+		if token.GoldenDogPhase() == "EXPIRED" {
+			continue
+		}
+		resp = append(resp, GoldenDogResponse{
+			Address:         token.Address,
+			Name:            token.Name,
+			Symbol:          token.Symbol,
+			PairAddress:     token.PairAddress,
+			Liquidity:       token.InitialLiquidity.InexactFloat64(),
+			RiskScore:       token.RiskScore,
+			RiskLevel:       token.RiskLevel,
+			IsGoldenDog:     token.IsGoldenDog,
+			GoldenDogScore:  token.GoldenDogScore,
+			EffectiveScore:  token.EffectiveScore(),
+			TimeDecayFactor: token.TimeDecayFactor(),
+			Phase:           token.GoldenDogPhase(),
+			CreatedAt:       token.CreatedAt,
+			AnalyzedAt:      token.AnalyzedAt,
+		})
+	}
+
+	sort.Slice(resp, func(i, j int) bool {
+		if resp[i].EffectiveScore == resp[j].EffectiveScore {
+			left := resp[i].AnalyzedAt
+			right := resp[j].AnalyzedAt
+			if left == nil && right == nil {
+				return false
+			}
+			if left == nil {
+				return false
+			}
+			if right == nil {
+				return true
+			}
+			return left.After(*right)
+		}
+		return resp[i].EffectiveScore > resp[j].EffectiveScore
+	})
+
+	if limit > 0 && len(resp) > limit {
+		resp = resp[:limit]
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": resp})
 }
 
 type AnalyzeTokenRiskPayload struct {
 	RiskScore      int    `json:"riskScore"`
 	RiskLevel      string `json:"riskLevel"`
 	IsGoldenDog    bool   `json:"isGoldenDog"`
+	GoldenDogScore int    `json:"goldenDogScore"`
 	Reasoning      string `json:"reasoning"`
 	Recommendation string `json:"recommendation"`
 	RiskFactors    struct {
@@ -121,6 +404,22 @@ type AnalyzeTokenRiskPayload struct {
 	} `json:"riskFactors"`
 }
 
+type AnalysisStatusResponseEnvelope struct {
+	Status string `json:"status"`
+}
+
+// PostTokenAnalysis godoc
+// @Summary Submit token analysis
+// @Description Submit AI analysis for a token
+// @Tags tokens
+// @Param address path string true "Token address"
+// @Param payload body AnalyzeTokenRiskPayload true "Analysis payload"
+// @Success 200 {object} AnalysisStatusResponseEnvelope
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security ApiKeyAuth
+// @Router /api/tokens/{address}/analysis [post]
 func (h *TokenHandler) PostTokenAnalysis(c *gin.Context) {
 	address := c.Param("address")
 	if address == "" {
@@ -170,10 +469,26 @@ func (h *TokenHandler) PostTokenAnalysis(c *gin.Context) {
 		return 0
 	}
 
+	getIntWithPresence := func(keys ...string) (int, bool) {
+		for _, key := range keys {
+			if v, ok := raw[key]; ok {
+				switch typed := v.(type) {
+				case float64:
+					return int(typed), true
+				case int:
+					return typed, true
+				}
+				return 0, true
+			}
+		}
+		return 0, false
+	}
+
 	payload := AnalyzeTokenRiskPayload{
 		RiskScore:      getInt("riskScore", "risk_score"),
 		RiskLevel:      getString("riskLevel", "risk_level"),
 		IsGoldenDog:    getBool("isGoldenDog", "is_golden_dog"),
+		GoldenDogScore: getInt("goldenDogScore", "golden_dog_score"),
 		Reasoning:      getString("reasoning"),
 		Recommendation: getString("recommendation"),
 	}
@@ -201,6 +516,13 @@ func (h *TokenHandler) PostTokenAnalysis(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "riskScore must be 0-100"})
 		return
 	}
+	if score, ok := getIntWithPresence("goldenDogScore", "golden_dog_score"); ok {
+		if score < 0 || score > 100 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "goldenDogScore must be 0-100"})
+			return
+		}
+		payload.GoldenDogScore = score
+	}
 	validLevels := map[string]bool{"safe": true, "warning": true, "danger": true}
 	if !validLevels[strings.ToLower(payload.RiskLevel)] {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid riskLevel"})
@@ -210,22 +532,24 @@ func (h *TokenHandler) PostTokenAnalysis(c *gin.Context) {
 	now := time.Now().UTC()
 	riskLevel := strings.ToLower(payload.RiskLevel)
 	riskDetails := map[string]interface{}{
-		"risk_factors":   payload.RiskFactors,
-		"reasoning":      payload.Reasoning,
-		"recommendation": payload.Recommendation,
-		"is_golden_dog":  payload.IsGoldenDog,
+		"risk_factors":     payload.RiskFactors,
+		"reasoning":        payload.Reasoning,
+		"recommendation":   payload.Recommendation,
+		"is_golden_dog":    payload.IsGoldenDog,
+		"golden_dog_score": payload.GoldenDogScore,
 	}
 	riskDetailsJSON, _ := json.Marshal(riskDetails)
 	analysisJSON, _ := json.Marshal(raw)
 
 	updates := map[string]interface{}{
-		"risk_score":      payload.RiskScore,
-		"risk_level":      riskLevel,
-		"risk_details":    riskDetailsJSON,
-		"analysis_result": analysisJSON,
-		"analysis_status": "analyzed",
-		"is_golden_dog":   payload.IsGoldenDog,
-		"analyzed_at":     now,
+		"risk_score":       payload.RiskScore,
+		"risk_level":       riskLevel,
+		"risk_details":     riskDetailsJSON,
+		"analysis_result":  analysisJSON,
+		"analysis_status":  "analyzed",
+		"is_golden_dog":    payload.IsGoldenDog,
+		"golden_dog_score": payload.GoldenDogScore,
+		"analyzed_at":      now,
 	}
 
 	if payload.RiskFactors.HoneypotRisk != "" {

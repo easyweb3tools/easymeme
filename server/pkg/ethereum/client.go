@@ -2,6 +2,7 @@ package ethereum
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -173,6 +175,133 @@ func (c *Client) Close() {
 	if c.ws != nil {
 		c.ws.Close()
 	}
+}
+
+func (c *Client) GetBalance(ctx context.Context, addr common.Address) (*big.Int, error) {
+	return c.http.BalanceAt(ctx, addr, nil)
+}
+
+func (c *Client) Receipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
+	return c.http.TransactionReceipt(ctx, hash)
+}
+
+func (c *Client) TokenBalance(ctx context.Context, tokenAddr, owner common.Address) (*big.Int, error) {
+	erc20ABI := `[{"constant":true,"inputs":[{"name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]`
+	parsed, err := abi.JSON(strings.NewReader(erc20ABI))
+	if err != nil {
+		return nil, err
+	}
+	data, err := parsed.Pack("balanceOf", owner)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.http.CallContract(ctx, ethereum.CallMsg{
+		To:   &tokenAddr,
+		Data: data,
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	return new(big.Int).SetBytes(res), nil
+}
+
+func (c *Client) ApproveToken(ctx context.Context, pk *ecdsa.PrivateKey, tokenAddr, spender common.Address, amount *big.Int) (common.Hash, error) {
+	erc20ABI := `[{"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}]`
+	parsed, err := abi.JSON(strings.NewReader(erc20ABI))
+	if err != nil {
+		return common.Hash{}, err
+	}
+	data, err := parsed.Pack("approve", spender, amount)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return c.sendTx(ctx, pk, tokenAddr, big.NewInt(0), data)
+}
+
+func (c *Client) SwapExactETHForTokens(ctx context.Context, pk *ecdsa.PrivateKey, tokenAddr common.Address, amountInWei, amountOutMin *big.Int) (common.Hash, error) {
+	router := common.HexToAddress(PancakeRouterV2)
+	wbnb := common.HexToAddress(WBNB)
+	routerABI := `[{"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokensSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"payable","type":"function"}]`
+	parsed, err := abi.JSON(strings.NewReader(routerABI))
+	if err != nil {
+		return common.Hash{}, err
+	}
+	deadline := big.NewInt(time.Now().Add(2 * time.Minute).Unix())
+	to := cryptoPubkeyAddress(pk)
+	data, err := parsed.Pack(
+		"swapExactETHForTokensSupportingFeeOnTransferTokens",
+		amountOutMin,
+		[]common.Address{wbnb, tokenAddr},
+		to,
+		deadline,
+	)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return c.sendTx(ctx, pk, router, amountInWei, data)
+}
+
+func (c *Client) SwapExactTokensForETH(ctx context.Context, pk *ecdsa.PrivateKey, tokenAddr common.Address, amountIn, amountOutMin *big.Int) (common.Hash, error) {
+	router := common.HexToAddress(PancakeRouterV2)
+	wbnb := common.HexToAddress(WBNB)
+	routerABI := `[{"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETHSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"}]`
+	parsed, err := abi.JSON(strings.NewReader(routerABI))
+	if err != nil {
+		return common.Hash{}, err
+	}
+	deadline := big.NewInt(time.Now().Add(2 * time.Minute).Unix())
+	to := cryptoPubkeyAddress(pk)
+	data, err := parsed.Pack(
+		"swapExactTokensForETHSupportingFeeOnTransferTokens",
+		amountIn,
+		amountOutMin,
+		[]common.Address{tokenAddr, wbnb},
+		to,
+		deadline,
+	)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return c.sendTx(ctx, pk, router, big.NewInt(0), data)
+}
+
+func (c *Client) sendTx(ctx context.Context, pk *ecdsa.PrivateKey, to common.Address, value *big.Int, data []byte) (common.Hash, error) {
+	from := cryptoPubkeyAddress(pk)
+	nonce, err := c.http.PendingNonceAt(ctx, from)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	gasPrice, err := c.http.SuggestGasPrice(ctx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	callMsg := ethereum.CallMsg{
+		From:  from,
+		To:    &to,
+		Value: value,
+		Data:  data,
+	}
+	gasLimit, err := c.http.EstimateGas(ctx, callMsg)
+	if err != nil {
+		gasLimit = 400000
+	}
+	tx := types.NewTransaction(nonce, to, value, gasLimit, gasPrice, data)
+	chainID, err := c.http.NetworkID(ctx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	signed, err := types.SignTx(tx, types.NewEIP155Signer(chainID), pk)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	if err := c.http.SendTransaction(ctx, signed); err != nil {
+		return common.Hash{}, err
+	}
+	return signed.Hash(), nil
+}
+
+func cryptoPubkeyAddress(pk *ecdsa.PrivateKey) common.Address {
+	return crypto.PubkeyToAddress(pk.PublicKey)
 }
 
 func parseString(data []byte) string {
