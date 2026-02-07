@@ -1,0 +1,1003 @@
+basePath: /
+definitions:
+  handler.AITradeListResponseEnvelope:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/model.AITrade'
+        type: array
+    type: object
+  handler.AITradeResponseEnvelope:
+    properties:
+      data:
+        $ref: '#/definitions/model.AITrade'
+    type: object
+  handler.AITradeStatsResponse:
+    properties:
+      avgPL:
+        type: number
+      byPeriod:
+        items:
+          $ref: '#/definitions/handler.PeriodStat'
+        type: array
+      byStrategy:
+        items:
+          $ref: '#/definitions/handler.StrategyStat'
+        type: array
+      count:
+        type: integer
+      totalPL:
+        type: number
+      winRate:
+        type: number
+    type: object
+  handler.AnalysisStatusResponseEnvelope:
+    properties:
+      status:
+        type: string
+    type: object
+  handler.AnalyzeTokenRiskPayload:
+    properties:
+      goldenDogScore:
+        type: integer
+      isGoldenDog:
+        type: boolean
+      reasoning:
+        type: string
+      recommendation:
+        type: string
+      riskFactors:
+        properties:
+          concentrationRisk:
+            type: string
+          honeypotRisk:
+            type: string
+          ownerRisk:
+            type: string
+          taxRisk:
+            type: string
+        type: object
+      riskLevel:
+        type: string
+      riskScore:
+        type: integer
+    type: object
+  handler.AnalyzedTokenListResponseEnvelope:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/handler.TokenResponseDTO'
+        type: array
+    type: object
+  handler.CreateAITradeRequest:
+    properties:
+      amountIn:
+        type: string
+      amountOut:
+        type: string
+      currentValue:
+        type: string
+      decisionReason:
+        type: string
+      goldenDogScore:
+        type: integer
+      profitLoss:
+        type: number
+      strategyUsed:
+        type: string
+      tokenAddress:
+        type: string
+      tokenSymbol:
+        type: string
+      txHash:
+        type: string
+      type:
+        type: string
+      userId:
+        type: string
+    type: object
+  handler.CreateTradeRequest:
+    properties:
+      amount_in:
+        type: string
+      amount_out:
+        type: string
+      gas_used:
+        type: string
+      status:
+        type: string
+      token_address:
+        type: string
+      token_symbol:
+        type: string
+      tx_hash:
+        type: string
+      type:
+        type: string
+      user_address:
+        type: string
+    type: object
+  handler.CreateWalletRequest:
+    properties:
+      userId:
+        type: string
+    type: object
+  handler.CreateWalletResponse:
+    properties:
+      address:
+        type: string
+      id:
+        type: string
+      userId:
+        type: string
+    type: object
+  handler.ExecuteTradeRequest:
+    properties:
+      amountIn:
+        description: BNB for BUY, Token for SELL
+        type: string
+      amountOut:
+        type: string
+      decisionReason:
+        type: string
+      force:
+        type: boolean
+      goldenDogScore:
+        type: integer
+      profitLoss:
+        type: number
+      strategyUsed:
+        type: string
+      tokenAddress:
+        type: string
+      tokenSymbol:
+        type: string
+      type:
+        description: BUY | SELL
+        type: string
+      userId:
+        type: string
+    type: object
+  handler.GoldenDogListResponseEnvelope:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/handler.GoldenDogResponse'
+        type: array
+    type: object
+  handler.GoldenDogResponse:
+    properties:
+      address:
+        type: string
+      analyzedAt:
+        type: string
+      createdAt:
+        type: string
+      effectiveScore:
+        type: integer
+      goldenDogScore:
+        type: integer
+      isGoldenDog:
+        type: boolean
+      liquidity:
+        type: number
+      name:
+        type: string
+      pairAddress:
+        type: string
+      phase:
+        type: string
+      riskLevel:
+        type: string
+      riskScore:
+        type: integer
+      symbol:
+        type: string
+      timeDecayFactor:
+        type: number
+    type: object
+  handler.PendingTokenListResponseEnvelope:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/handler.PendingTokenResponse'
+        type: array
+    type: object
+  handler.PendingTokenResponse:
+    properties:
+      address:
+        type: string
+      createdAt:
+        type: string
+      creatorAddress:
+        type: string
+      liquidity:
+        type: number
+      name:
+        type: string
+      pairAddress:
+        type: string
+      symbol:
+        type: string
+    type: object
+  handler.PeriodStat:
+    properties:
+      avgPL:
+        type: number
+      count:
+        type: integer
+      period:
+        type: string
+      totalPL:
+        type: number
+      winRate:
+        type: number
+    type: object
+  handler.StrategyStat:
+    properties:
+      avgPL:
+        type: number
+      count:
+        type: integer
+      strategy:
+        type: string
+      totalPL:
+        type: number
+      winRate:
+        type: number
+    type: object
+  handler.TokenDetailResponse:
+    properties:
+      address:
+        type: string
+      analysisResult:
+        additionalProperties: true
+        type: object
+      analyzedAt:
+        type: string
+      createdAt:
+        type: string
+      creatorAddress:
+        type: string
+      dex:
+        type: string
+      effectiveScore:
+        type: integer
+      goldenDogScore:
+        type: integer
+      id:
+        type: string
+      isGoldenDog:
+        type: boolean
+      liquidity:
+        type: number
+      name:
+        type: string
+      pairAddress:
+        type: string
+      phase:
+        type: string
+      riskDetails:
+        additionalProperties: true
+        type: object
+      riskLevel:
+        type: string
+      riskScore:
+        type: integer
+      symbol:
+        type: string
+      timeDecayFactor:
+        type: number
+    type: object
+  handler.TokenDetailResponseEnvelope:
+    properties:
+      data:
+        $ref: '#/definitions/handler.TokenDetailResponse'
+    type: object
+  handler.TokenListResponseEnvelope:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/handler.TokenResponseDTO'
+        type: array
+    type: object
+  handler.TokenResponseDTO:
+    properties:
+      address:
+        type: string
+      analysis_status:
+        type: string
+      analyzed_at:
+        type: string
+      buy_tax:
+        type: number
+      created_at:
+        type: string
+      creator_address:
+        type: string
+      decimals:
+        type: integer
+      dex:
+        type: string
+      golden_dog_score:
+        type: integer
+      id:
+        type: string
+      initial_liquidity:
+        type: string
+      is_golden_dog:
+        type: boolean
+      is_honeypot:
+        type: boolean
+      name:
+        type: string
+      pair_address:
+        type: string
+      risk_level:
+        type: string
+      risk_score:
+        type: integer
+      sell_tax:
+        type: number
+      symbol:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handler.TokenResponseEnvelope:
+    properties:
+      data:
+        $ref: '#/definitions/handler.TokenResponseDTO'
+    type: object
+  handler.TradeListResponseEnvelope:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/model.Trade'
+        type: array
+    type: object
+  handler.TradeResponseEnvelope:
+    properties:
+      data:
+        $ref: '#/definitions/model.Trade'
+    type: object
+  handler.TradeStatusUpdateRequest:
+    properties:
+      status:
+        type: string
+    type: object
+  handler.TradeStatusUpdateResponseEnvelope:
+    properties:
+      data:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  handler.WalletBalanceResponse:
+    properties:
+      address:
+        type: string
+      balance:
+        type: number
+      userId:
+        type: string
+    type: object
+  handler.WalletConfigRequest:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+      userId:
+        type: string
+    type: object
+  handler.WithdrawRequest:
+    properties:
+      amount:
+        type: number
+      userId:
+        type: string
+    type: object
+  handler.WithdrawResponse:
+    properties:
+      address:
+        type: string
+      balance:
+        type: number
+      userId:
+        type: string
+    type: object
+  model.AITrade:
+    properties:
+      amount_in:
+        type: string
+      amount_out:
+        type: string
+      block_number:
+        type: integer
+      current_value:
+        type: string
+      decision_reason:
+        type: string
+      error_message:
+        type: string
+      gas_used:
+        type: string
+      golden_dog_score:
+        type: integer
+      id:
+        type: string
+      profit_loss:
+        type: number
+      status:
+        description: pending | success | failed
+        type: string
+      strategy_used:
+        type: string
+      timestamp:
+        type: string
+      token_address:
+        type: string
+      token_symbol:
+        type: string
+      tx_hash:
+        type: string
+      type:
+        description: BUY | SELL
+        type: string
+      user_id:
+        type: string
+    type: object
+  model.Trade:
+    properties:
+      amount_in:
+        type: number
+      amount_out:
+        type: number
+      created_at:
+        type: string
+      gas_used:
+        type: number
+      id:
+        type: string
+      status:
+        description: pending, success, failed
+        type: string
+      token_address:
+        type: string
+      token_symbol:
+        type: string
+      tx_hash:
+        type: string
+      type:
+        description: buy, sell
+        type: string
+      user_address:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: EasyMeme server API for token analysis and discovery.
+  title: EasyMeme API
+  version: "0.1"
+paths:
+  /api/ai-trades:
+    get:
+      description: List AI trades
+      parameters:
+      - default: 50
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AITradeListResponseEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get AI trades
+      tags:
+      - ai-trades
+    post:
+      description: Create AI trade record
+      parameters:
+      - description: AI trade payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateAITradeRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AITradeResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create AI trade
+      tags:
+      - ai-trades
+  /api/ai-trades/stats:
+    get:
+      description: Aggregate AI trade statistics
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/handler.AITradeStatsResponse'
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get AI trade stats
+      tags:
+      - ai-trades
+  /api/tokens:
+    get:
+      description: List latest tokens
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.TokenListResponseEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get latest tokens
+      tags:
+      - tokens
+  /api/tokens/{address}:
+    get:
+      description: Get token by address
+      parameters:
+      - description: Token address
+        in: path
+        name: address
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.TokenResponseEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get token
+      tags:
+      - tokens
+  /api/tokens/{address}/analysis:
+    post:
+      description: Submit AI analysis for a token
+      parameters:
+      - description: Token address
+        in: path
+        name: address
+        required: true
+        type: string
+      - description: Analysis payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.AnalyzeTokenRiskPayload'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AnalysisStatusResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Submit token analysis
+      tags:
+      - tokens
+  /api/tokens/{address}/detail:
+    get:
+      description: Get token detail including scores and time decay metadata
+      parameters:
+      - description: Token address
+        in: path
+        name: address
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.TokenDetailResponseEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get token detail
+      tags:
+      - tokens
+  /api/tokens/analyzed:
+    get:
+      description: List analyzed tokens
+      parameters:
+      - default: 20
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AnalyzedTokenListResponseEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get analyzed tokens
+      tags:
+      - tokens
+  /api/tokens/golden-dogs:
+    get:
+      description: List golden dog tokens sorted by effective score and excluding
+        expired
+      parameters:
+      - default: 20
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.GoldenDogListResponseEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get golden dog tokens
+      tags:
+      - tokens
+  /api/tokens/pending:
+    get:
+      description: List tokens pending analysis
+      parameters:
+      - default: 10
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Min liquidity
+        in: query
+        name: min_liquidity
+        type: number
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.PendingTokenListResponseEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get pending tokens
+      tags:
+      - tokens
+  /api/trades:
+    get:
+      description: Get trades by user address
+      parameters:
+      - description: User address
+        in: query
+        name: user
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.TradeListResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get trades
+      tags:
+      - trades
+    post:
+      description: Create trade record
+      parameters:
+      - description: Trade payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateTradeRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.TradeResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create trade
+      tags:
+      - trades
+  /api/trades/{txHash}:
+    patch:
+      description: Update trade status by tx hash
+      parameters:
+      - description: Transaction hash
+        in: path
+        name: txHash
+        required: true
+        type: string
+      - description: Status payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.TradeStatusUpdateRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.TradeStatusUpdateResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update trade status
+      tags:
+      - trades
+  /api/wallet/balance:
+    get:
+      description: Get managed wallet balance by user
+      parameters:
+      - description: User ID
+        in: query
+        name: userId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/handler.WalletBalanceResponse'
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get managed wallet balance
+      tags:
+      - wallet
+  /api/wallet/config:
+    post:
+      description: Upsert auto-trade config for managed wallet
+      parameters:
+      - description: Wallet config payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.WalletConfigRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Upsert wallet config
+      tags:
+      - wallet
+  /api/wallet/create:
+    post:
+      description: Create a managed wallet and store encrypted private key
+      parameters:
+      - description: Create wallet payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateWalletRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/handler.CreateWalletResponse'
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create managed wallet
+      tags:
+      - wallet
+  /api/wallet/execute-trade:
+    post:
+      description: Execute managed wallet trade on BSC
+      parameters:
+      - description: Execute trade payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ExecuteTradeRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Execute trade
+      tags:
+      - wallet
+  /api/wallet/withdraw:
+    post:
+      description: Decrease managed wallet balance (placeholder, no on-chain tx)
+      parameters:
+      - description: Withdraw payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.WithdrawRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/handler.WithdrawResponse'
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Withdraw from managed wallet
+      tags:
+      - wallet
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: X-API-Key
+    type: apiKey
+swagger: "2.0"

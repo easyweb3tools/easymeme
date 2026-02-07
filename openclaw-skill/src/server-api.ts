@@ -1,4 +1,4 @@
-import type { PendingToken, TokenRiskAnalysis } from "./types.js";
+import type { AITradePayload, PendingToken, TokenRiskAnalysis } from "./types.js";
 
 const DEFAULT_SERVER_URL = "http://localhost:8080";
 
@@ -112,6 +112,66 @@ export async function submitAnalysis(
     {
       method: "POST",
       body,
+    },
+    overrideUrl,
+  );
+}
+
+export async function createWallet(userId: string, overrideUrl?: string): Promise<unknown> {
+  return requestJson(
+    `/api/wallet/create`,
+    {
+      method: "POST",
+      body: JSON.stringify({ userId })
+    },
+    overrideUrl,
+  );
+}
+
+export async function getWalletBalance(userId: string, overrideUrl?: string): Promise<unknown> {
+  return requestJson(
+    `/api/wallet/balance?userId=${encodeURIComponent(userId)}`,
+    undefined,
+    overrideUrl,
+  );
+}
+
+export async function upsertWalletConfig(
+  userId: string,
+  config: Record<string, unknown>,
+  overrideUrl?: string,
+): Promise<unknown> {
+  return requestJson(
+    `/api/wallet/config`,
+    {
+      method: "POST",
+      body: JSON.stringify({ userId, config })
+    },
+    overrideUrl,
+  );
+}
+
+export async function executeTrade(
+  payload: AITradePayload & { userId: string },
+  overrideUrl?: string,
+): Promise<unknown> {
+  return requestJson(
+    `/api/wallet/execute-trade`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        userId: payload.userId,
+        tokenAddress: payload.tokenAddress,
+        tokenSymbol: payload.tokenSymbol,
+        type: payload.type,
+        amountIn: payload.amountIn,
+        amountOut: payload.amountOut,
+        goldenDogScore: payload.goldenDogScore,
+        decisionReason: payload.decisionReason,
+        strategyUsed: payload.strategyUsed,
+        profitLoss: payload.profitLoss,
+        force: (payload as any).force,
+      })
     },
     overrideUrl,
   );

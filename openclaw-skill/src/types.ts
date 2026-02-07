@@ -40,7 +40,23 @@ export type TokenRiskAnalysis = {
   riskScore: number;
   riskLevel: "SAFE" | "WARNING" | "DANGER";
   isGoldenDog: boolean;
+  goldenDogScore?: number;
   riskFactors: RiskFactors;
   reasoning: string;
   recommendation: string;
+};
+
+export type AITradePayload = {
+  tokenAddress: string;
+  tokenSymbol?: string;
+  type: "BUY" | "SELL";
+  amountIn?: string;
+  amountOut?: string;
+  txHash?: string;
+  goldenDogScore?: number;
+  decisionReason?: string;
+  strategyUsed?: string;
+  currentValue?: string;
+  profitLoss?: number;
+  force?: boolean;
 };

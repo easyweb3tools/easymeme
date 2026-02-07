@@ -13,15 +13,23 @@ Continuously analyze pending BNB Chain tokens from the EasyMeme server, decide i
 
 - `fetchPendingTokens`
 - `analyzeTokenRisk`
+- `estimateGoldenDogScore`
 - `submitAnalysis`
+- `executeTrade`
+- `upsertWalletConfig`
+- `recordOutcome`
+- `recordUserFeedback`
 
 ## Workflow (follow in order)
 
 1. Call `fetchPendingTokens` (default limit 10). If the list is empty, reply that there are no pending tokens and stop.
 2. For each token:
    - Produce an analysis JSON (as plain text first) in the exact schema required by `analyzeTokenRisk`.
+   - Call `estimateGoldenDogScore` using the analysis inputs to get a learned `goldenDogScore`.
    - Verify the JSON includes all required fields.
    - Then call `analyzeTokenRisk` with `{ token, analysis }`.
+   - If `isGoldenDog` and score >= threshold (default 75), call `executeTrade`.
+   - For SELL, include `profitLoss` to allow stop-loss/take-profit gating.
    - Call `submitAnalysis` with `{ tokenAddress, analysis }` to persist the result.
 3. Summarize how many tokens were analyzed and submitted.
 
@@ -36,6 +44,7 @@ Two-step rule (critical):
 - `riskScore`: 0-100
 - `riskLevel`: SAFE | WARNING | DANGER
 - `isGoldenDog`: true only if the token is worth close monitoring, not just "safe"
+- `goldenDogScore`: 0-100 (auto-filled if omitted; still preferred to set explicitly)
 - `riskFactors`: honeypotRisk, taxRisk, ownerRisk, concentrationRisk (LOW | MEDIUM | HIGH)
 - `reasoning`: concise explanation referencing observed data
 - `recommendation`: short user-facing suggestion
@@ -49,6 +58,7 @@ Minimal example (structure only; values must be your analysis):
   "riskScore": 42,
   "riskLevel": "WARNING",
   "isGoldenDog": false,
+  "goldenDogScore": 35,
   "riskFactors": {
     "honeypotRisk": "LOW",
     "taxRisk": "MEDIUM",
@@ -72,6 +82,32 @@ A "golden dog" is a token with credible upside potential. It is not necessarily 
 
 If the token is safe but low potential, mark `isGoldenDog = false`.
 
+## Golden dog score estimation (temporary rule-based)
+
+`estimateGoldenDogScore` reads OpenClaw local memory weights and returns a learned score.
+If the tool fails, fall back to the rule/weight mix below:
+
+1. Start with `riskScore` as base.
+2. If `isGoldenDog = true`, add +15; if false, subtract -10.
+3. Adjust for risk factors:
+   - Any `HIGH` factor: -15 each
+   - Any `MEDIUM` factor: -5 each
+4. Clamp to 0-100.
+
+Quick formula example:
+
+```
+goldenDogScore =
+  clamp(0, 100,
+    riskScore
+    + (isGoldenDog ? 15 : -10)
+    - 15 * count(HIGH)
+    - 5 * count(MEDIUM)
+  )
+```
+
+Use this estimate consistently for now, and keep `reasoning` aligned with the adjustments.
+
 ## Error handling
 
 - If the server returns invalid data, skip that token and continue.
@@ -80,3 +116,105 @@ If the token is safe but low potential, mark `isGoldenDog = false`.
 ## Environment
 
 - Set `EASYMEME_SERVER_URL` to target the EasyMeme server (e.g. `http://server:8080`).
+- Optional: set `EASYMEME_MEMORY_PATH` to store learned weights (default `~/.easymeme/memory.json`).
+- Optional: set `EASYMEME_USER_ID` to bind managed wallet and AI trades (default `default`).
+
+## Learning trigger
+
+When a trade outcome is known, call `recordOutcome` with the result to update local memory weights.
+
+## Example learning loop (concise)
+
+1. Estimate score before trade:
+```json
+{
+  "riskScore": 78,
+  "isGoldenDog": true,
+  "riskFactors": {
+    "honeypotRisk": "LOW",
+    "taxRisk": "MEDIUM",
+    "ownerRisk": "LOW",
+    "concentrationRisk": "MEDIUM"
+  }
+}
+```
+
+2. Record outcome after trade:
+```json
+{
+  "tokenAddress": "0xabc...",
+  "outcome": "MOON",
+  "maxGain": 1.6,
+  "maxLoss": -0.1,
+  "analysis": {
+    "isGoldenDog": true
+  }
+}
+```
+
+3. Memory weights update:
+- `goldenDogBias` tends to increase
+- `highPenalty` / `mediumPenalty` tend to decrease
+
+## End-to-end run flow (with learning trigger)
+
+1. `fetchPendingTokens` -> get pending list  
+2. For each token: build analysis JSON  
+3. `estimateGoldenDogScore` -> fill `goldenDogScore`  
+4. `analyzeTokenRisk` -> validate analysis  
+5. `submitAnalysis` -> persist to server  
+6. When trade outcome is known: `recordOutcome` -> update weights in local memory
+
+## Auto trade config
+
+Use `upsertWalletConfig` to set auto-trade params per user:
+```json
+{
+  "userId": "default",
+  "config": {
+    "enabled": true,
+    "maxAmountPerTrade": 0.1,
+    "minGoldenDogScore": 75,
+    "dailyBudget": 1
+  }
+}
+```
+
+## Auto take-profit / stop-loss (server enforcement)
+
+When calling `executeTrade` for SELL, include `profitLoss` (e.g. 0.5 for +50%, -0.3 for -30%).
+Server will only allow SELL if:
+- `profitLoss <= stopLoss`, or
+- `profitLoss >= any takeProfitLevels`, unless `force = true`.
+
+## Telegram feedback -> OpenClaw Memory
+
+When Telegram users send feedback, map it to `recordUserFeedback`:
+```json
+{
+  "tokenAddress": "0xabc...",
+  "feedbackType": "REPORT_RUG",
+  "userId": "telegram:123456",
+  "channel": "TELEGRAM",
+  "userReputation": 60
+}
+```
+
+This will:
+- store feedback in local memory
+- update weights via `applyFeedback`
+
+## Rule performance tracking
+
+When calling `recordOutcome`, OpenClaw will update local rule performance stats:
+- Rule ID: `golden_dog_decision`
+- Accuracy is tracked on `MOON` / `RUG` outcomes (ignores `FLAT`)
+
+Tool output now includes:
+```json
+{
+  "rulePerformance": [
+    { "ruleId": "golden_dog_decision", "accuracy": 0.72, "correct": 18, "total": 25 }
+  ]
+}
+```

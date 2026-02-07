@@ -1,12 +1,39 @@
-# 🦞 EasyMeme - BNB Chain 自治 Agent
+# 🐕 EasyMeme - 你的专属 AI Meme 币猎手
 
-> 一个用 OpenClaw 构建的、长期运行的链上 Meme 币猎手
+> 自动发现、分析、交易 BNB Chain 上的金狗
+
+**开源地址**: https://github.com/easyweb3tools/easymeme
+
+---
+
+## 💡 核心理念
+
+**金狗有时效性** - 代币的"金狗"属性会随时间衰减，识别规则必须动态演进
+
+**OpenClaw 是学习型 Agent** - 通过 Memory 积累实战经验，从成功/失败中学习，越用越聪明
+
+**去中心化个人部署** - EasyMeme 本质上服务个人，建议每个人搭建自己的 AI 自动化交易系统
+
+---
 
 ## 🎬 Demo
 
 ![Demo](./demo/recording.gif)
 
-Agent 自动：发现新代币 → AI 分析风险 → 识别金狗 → 汇报结果
+Agent 自动：发现新代币 → AI 分析风险 → 识别金狗 → 自动交易
+
+---
+
+## 🔗 为什么必须用 OpenClaw
+
+| 能力 | OpenClaw 组件 | 在 EasyMeme 中的作用 |
+|------|--------------|---------------------|
+| **自主决策** | Agent | AI 判断代币是否金狗，不靠规则 |
+| **历史记忆** | Memory | 记住风险模式，越用越聪明 |
+| **持续运行** | Cron | 每 5 分钟自动唤醒分析 |
+| **用户互动** | Dialog/Telegram | 与用户对话学习，动态更新规则 |
+
+**核心价值**：OpenClaw 让 EasyMeme 从"工具"变成"会思考、会学习的 Agent"。
 
 ---
 
@@ -15,6 +42,7 @@ Agent 自动：发现新代币 → AI 分析风险 → 识别金狗 → 汇报�
 ```bash
 git clone https://github.com/easyweb3tools/easymeme
 cd easymeme
+export GEMINI_API_KEY=your_key
 docker compose up --build
 ```
 
@@ -30,15 +58,15 @@ docker compose up --build
 │   (Go)      │◀────│   Agent     │     │  (Next.js)  │
 └─────────────┘     └─────────────┘     └─────────────┘
       │                   │                   │
- 链上数据抓取         AI 金狗识别          钱包交易
- 数据库存储          风险分析             UI 展示
+ 链上数据抓取         AI 金狗识别          金狗展示
+ 托管钱包            自动交易             AI交易历史
 ```
 
 | 组件 | 职责 |
 |------|------|
-| `server/` | 抓取 BSC 链上数据，存储到 Postgres |
-| `openclaw-skill/` | **AI 分析**，判断是否"金狗" |
-| `web/` | 钱包连接，交易执行，结果展示 |
+| `server/` | 抓取 BSC 链上数据，存储到 Postgres，托管钱包管理 |
+| `openclaw-skill/` | **AI 分析**，判断金狗，自动交易，用户互动学习 |
+| `web/` | 首页自部署指南，金狗列表，AI 交易历史 |
 
 ---
 
@@ -46,9 +74,8 @@ docker compose up --build
 
 **方式 A：一键启动（推荐）**
 ```bash
-# 需要提前设置 Gemini Key（不要提交到仓库）
 export GEMINI_API_KEY=your_key
-# 可选：建议使用自有 BSC RPC / BSCScan Key，避免公共节点限流
+# 可选：自有 BSC RPC / BSCScan Key
 export BSC_RPC_HTTP=https://your-bsc-http
 export BSC_RPC_WS=wss://your-bsc-ws
 export BSCSCAN_API_KEY=your_bscscan_key
@@ -72,6 +99,7 @@ https://docs.openclaw.ai/concepts/model-providers
 
 **1. 启动数据库**
 ```bash
+# 1. 数据库
 docker compose up db -d
 ```
 
@@ -86,6 +114,7 @@ export BSC_RPC_WS=wss://your-bsc-ws
 export BSCSCAN_API_KEY=your_bscscan_key
 export EASYMEME_API_KEY=your_api_key
 export CORS_ALLOWED_ORIGINS=http://localhost:3000
+export WALLET_MASTER_KEY=your_wallet_master_key
 go run ./cmd/server
 ```
 
@@ -95,8 +124,6 @@ cd web
 npm install
 export NEXT_PUBLIC_API_URL=http://localhost:8080
 export NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
-export NEXT_PUBLIC_PANCAKE_ROUTER=0x10ED43C718714eb63d5aA57B78B54704E256024E
-export NEXT_PUBLIC_WBNB=0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
 npm run dev
 ```
 
@@ -106,37 +133,29 @@ cd openclaw-skill
 npm install && npm run build
 export EASYMEME_SERVER_URL=http://localhost:8080
 export EASYMEME_API_KEY=your_api_key
+export EASYMEME_USER_ID=default
 # ~/.openclaw/openclaw.json 里配置默认provider为Gemini时，设置GEMINI_API_KEY环境变量
 # 其他provider参考官方文档 https://docs.openclaw.ai/concepts/model-providers
 export GEMINI_API_KEY=your_key 
 openclaw plugins install --link ./
 openclaw plugins enable easymeme-openclaw-skill
-openclaw agent --local --session-id easymeme --message "获取待分析代币 -> AI 分析 -> 回写结果"
+openclaw agent --local --session-id easymeme --message "分析代币"
 ```
 
----
-
-## 🔗 为什么必须用 OpenClaw
-
-| 能力 | OpenClaw 组件 | 在 EasyMeme 中的作用 |
-|------|--------------|---------------------|
-| **自主决策** | Agent | AI 判断代币是否金狗，不靠规则 |
-| **历史记忆** | Memory | 记住风险模式，越用越聪明 |
-| **持续运行** | Cron | 每 5 分钟自动唤醒分析 |
-| **多端响应** | Channels | Telegram/Discord 推送发现 |
-
-**核心价值**：OpenClaw 让 EasyMeme 从"工具"变成"会思考的 Agent"。
+**常见问题（OpenClaw fetch failed）**
+- 确认 Server 已启动：`curl http://localhost:8080/health`
+- 确认 `EASYMEME_SERVER_URL` 可访问（Docker 场景注意端口映射）
+- 如设置了 `EASYMEME_API_KEY`，Server 也必须配置一致的 `EASYMEME_API_KEY`
 
 ---
 
-## 🧠 Memory 未实现/后续
+## 🧠 Memory 学习
 
-当前版本尚未落地 OpenClaw Memory 持久化（风险模式、已分析代币去重、金狗历史表现等）。
-后续计划：
-
-- 接入 OpenClaw Memory（长期记忆）
-- 记录已分析代币，避免重复分析
-- 累积风险模式与金狗表现
+OpenClaw Memory 用于：
+- 记录已分析代币，避免重复
+- 累积风险模式（成功/失败案例）
+- 动态调整金狗识别规则权重
+- 用户信誉系统（防投毒）
 
 ---
 
@@ -144,7 +163,7 @@ openclaw agent --local --session-id easymeme --message "获取待分析代币 ->
 
 - **Network**: BNB Smart Chain (BSC)
 - **Data Source**: BSCScan API + RPC
-- **Example**: [View on BSCScan](https://bscscan.com/tx/0x...)
+- **DEX**: PancakeSwap V2
 
 ---
 

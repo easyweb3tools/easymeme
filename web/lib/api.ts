@@ -16,15 +16,111 @@ export interface Token {
   sell_tax: number;
   created_at: string;
 }
+export type GoldenDogToken = {
+  address: string;
+  name: string;
+  symbol: string;
+  pairAddress: string;
+  liquidity: number;
+  riskScore: number;
+  riskLevel: 'pending' | 'safe' | 'warning' | 'danger';
+  isGoldenDog: boolean;
+  goldenDogScore: number;
+  effectiveScore: number;
+  timeDecayFactor: number;
+  phase: 'EARLY' | 'PEAK' | 'DECLINING' | 'EXPIRED';
+  createdAt: string;
+  analyzedAt?: string | null;
+};
+
+export type TokenDetail = {
+  id: string;
+  address: string;
+  name: string;
+  symbol: string;
+  pairAddress: string;
+  dex: string;
+  liquidity: number;
+  creatorAddress: string;
+  createdAt: string;
+  analyzedAt?: string | null;
+  riskScore: number;
+  riskLevel: 'pending' | 'safe' | 'warning' | 'danger';
+  isGoldenDog: boolean;
+  goldenDogScore: number;
+  effectiveScore: number;
+  timeDecayFactor: number;
+  phase: 'EARLY' | 'PEAK' | 'DECLINING' | 'EXPIRED';
+  riskDetails?: Record<string, unknown>;
+  analysisResult?: Record<string, unknown>;
+};
+
+export type AITrade = {
+  id: string;
+  token_address: string;
+  token_symbol: string;
+  type: 'BUY' | 'SELL';
+  amount_in: string;
+  amount_out: string;
+  tx_hash: string;
+  timestamp: string;
+  status: string;
+  gas_used: string;
+  block_number: number;
+  error_message: string;
+  golden_dog_score: number;
+  decision_reason: string;
+  strategy_used: string;
+  current_value: string;
+  profit_loss: number;
+  user_id: string;
+};
+
+export type AITradeStats = {
+  count: number;
+  winRate: number;
+  avgPL: number;
+  totalPL: number;
+  byStrategy: Array<{
+    strategy: string;
+    count: number;
+    winRate: number;
+    avgPL: number;
+    totalPL: number;
+  }>;
+  byPeriod: Array<{
+    period: string;
+    count: number;
+    winRate: number;
+    avgPL: number;
+    totalPL: number;
+  }>;
+};
+
+export async function getGoldenDogs(limit = 50): Promise<GoldenDogToken[]> {
+  const res = await fetch(`${API_URL}/api/tokens/golden-dogs?limit=${limit}`, {
+    cache: 'no-store',
+  });
+  const data = await res.json();
+  return data.data;
+}
+
+export async function getTokenDetail(address: string): Promise<TokenDetail> {
+  const res = await fetch(`${API_URL}/api/tokens/${address}/detail`, {
+    cache: 'no-store',
+  });
+  const data = await res.json();
+  return data.data;
+}
 
 export async function getTokens(): Promise<Token[]> {
-  const res = await fetch(`${API_URL}/api/tokens`);
+  const res = await fetch(`${API_URL}/api/tokens`, { cache: 'no-store' });
   const data = await res.json();
   return data.data;
 }
 
 export async function getToken(address: string): Promise<Token> {
-  const res = await fetch(`${API_URL}/api/tokens/${address}`);
+  const res = await fetch(`${API_URL}/api/tokens/${address}`, { cache: 'no-store' });
   const data = await res.json();
   return data.data;
 }
@@ -42,4 +138,20 @@ export function createWebSocket(onMessage: (data: any) => void): WebSocket {
   };
 
   return ws;
+}
+
+export async function getAITrades(limit = 50): Promise<AITrade[]> {
+  const res = await fetch(`${API_URL}/api/ai-trades?limit=${limit}`, {
+    cache: 'no-store',
+  });
+  const data = await res.json();
+  return data.data;
+}
+
+export async function getAITradeStats(): Promise<AITradeStats> {
+  const res = await fetch(`${API_URL}/api/ai-trades/stats`, {
+    cache: 'no-store',
+  });
+  const data = await res.json();
+  return data.data;
 }

@@ -1,0 +1,1528 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "EasyMeme server API for token analysis and discovery.",
+        "title": "EasyMeme API",
+        "contact": {},
+        "version": "0.1"
+    },
+    "basePath": "/",
+    "paths": {
+        "/api/ai-trades": {
+            "get": {
+                "description": "List AI trades",
+                "tags": [
+                    "ai-trades"
+                ],
+                "summary": "Get AI trades",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.AITradeListResponseEnvelope"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create AI trade record",
+                "tags": [
+                    "ai-trades"
+                ],
+                "summary": "Create AI trade",
+                "parameters": [
+                    {
+                        "description": "AI trade payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.CreateAITradeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.AITradeResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/ai-trades/stats": {
+            "get": {
+                "description": "Aggregate AI trade statistics",
+                "tags": [
+                    "ai-trades"
+                ],
+                "summary": "Get AI trade stats",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "#/definitions/handler.AITradeStatsResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tokens": {
+            "get": {
+                "description": "List latest tokens",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Get latest tokens",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.TokenListResponseEnvelope"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tokens/analyzed": {
+            "get": {
+                "description": "List analyzed tokens",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Get analyzed tokens",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.AnalyzedTokenListResponseEnvelope"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tokens/golden-dogs": {
+            "get": {
+                "description": "List golden dog tokens sorted by effective score and excluding expired",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Get golden dog tokens",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.GoldenDogListResponseEnvelope"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tokens/pending": {
+            "get": {
+                "description": "List tokens pending analysis",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Get pending tokens",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Min liquidity",
+                        "name": "min_liquidity",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.PendingTokenListResponseEnvelope"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tokens/{address}": {
+            "get": {
+                "description": "Get token by address",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Get token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token address",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.TokenResponseEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tokens/{address}/analysis": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Submit AI analysis for a token",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Submit token analysis",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token address",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Analysis payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.AnalyzeTokenRiskPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.AnalysisStatusResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tokens/{address}/detail": {
+            "get": {
+                "description": "Get token detail including scores and time decay metadata",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Get token detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token address",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.TokenDetailResponseEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/trades": {
+            "get": {
+                "description": "Get trades by user address",
+                "tags": [
+                    "trades"
+                ],
+                "summary": "Get trades",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User address",
+                        "name": "user",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.TradeListResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create trade record",
+                "tags": [
+                    "trades"
+                ],
+                "summary": "Create trade",
+                "parameters": [
+                    {
+                        "description": "Trade payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.CreateTradeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.TradeResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/trades/{txHash}": {
+            "patch": {
+                "description": "Update trade status by tx hash",
+                "tags": [
+                    "trades"
+                ],
+                "summary": "Update trade status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transaction hash",
+                        "name": "txHash",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.TradeStatusUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.TradeStatusUpdateResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/wallet/balance": {
+            "get": {
+                "description": "Get managed wallet balance by user",
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Get managed wallet balance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "#/definitions/handler.WalletBalanceResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/wallet/config": {
+            "post": {
+                "description": "Upsert auto-trade config for managed wallet",
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Upsert wallet config",
+                "parameters": [
+                    {
+                        "description": "Wallet config payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.WalletConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/wallet/create": {
+            "post": {
+                "description": "Create a managed wallet and store encrypted private key",
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Create managed wallet",
+                "parameters": [
+                    {
+                        "description": "Create wallet payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.CreateWalletRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "#/definitions/handler.CreateWalletResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/wallet/execute-trade": {
+            "post": {
+                "description": "Execute managed wallet trade on BSC",
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Execute trade",
+                "parameters": [
+                    {
+                        "description": "Execute trade payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.ExecuteTradeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/wallet/withdraw": {
+            "post": {
+                "description": "Decrease managed wallet balance (placeholder, no on-chain tx)",
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Withdraw from managed wallet",
+                "parameters": [
+                    {
+                        "description": "Withdraw payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.WithdrawRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "#/definitions/handler.WithdrawResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handler.AITradeListResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AITrade"
+                    }
+                }
+            }
+        },
+        "handler.AITradeResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/model.AITrade"
+                }
+            }
+        },
+        "handler.AITradeStatsResponse": {
+            "type": "object",
+            "properties": {
+                "avgPL": {
+                    "type": "number"
+                },
+                "byPeriod": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.PeriodStat"
+                    }
+                },
+                "byStrategy": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.StrategyStat"
+                    }
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "totalPL": {
+                    "type": "number"
+                },
+                "winRate": {
+                    "type": "number"
+                }
+            }
+        },
+        "handler.AnalysisStatusResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.AnalyzeTokenRiskPayload": {
+            "type": "object",
+            "properties": {
+                "goldenDogScore": {
+                    "type": "integer"
+                },
+                "isGoldenDog": {
+                    "type": "boolean"
+                },
+                "reasoning": {
+                    "type": "string"
+                },
+                "recommendation": {
+                    "type": "string"
+                },
+                "riskFactors": {
+                    "type": "object",
+                    "properties": {
+                        "concentrationRisk": {
+                            "type": "string"
+                        },
+                        "honeypotRisk": {
+                            "type": "string"
+                        },
+                        "ownerRisk": {
+                            "type": "string"
+                        },
+                        "taxRisk": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "riskLevel": {
+                    "type": "string"
+                },
+                "riskScore": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handler.AnalyzedTokenListResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.TokenResponseDTO"
+                    }
+                }
+            }
+        },
+        "handler.CreateAITradeRequest": {
+            "type": "object",
+            "properties": {
+                "amountIn": {
+                    "type": "string"
+                },
+                "amountOut": {
+                    "type": "string"
+                },
+                "currentValue": {
+                    "type": "string"
+                },
+                "decisionReason": {
+                    "type": "string"
+                },
+                "goldenDogScore": {
+                    "type": "integer"
+                },
+                "profitLoss": {
+                    "type": "number"
+                },
+                "strategyUsed": {
+                    "type": "string"
+                },
+                "tokenAddress": {
+                    "type": "string"
+                },
+                "tokenSymbol": {
+                    "type": "string"
+                },
+                "txHash": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.CreateTradeRequest": {
+            "type": "object",
+            "properties": {
+                "amount_in": {
+                    "type": "string"
+                },
+                "amount_out": {
+                    "type": "string"
+                },
+                "gas_used": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "token_address": {
+                    "type": "string"
+                },
+                "token_symbol": {
+                    "type": "string"
+                },
+                "tx_hash": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "user_address": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.CreateWalletRequest": {
+            "type": "object",
+            "properties": {
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.CreateWalletResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.ExecuteTradeRequest": {
+            "type": "object",
+            "properties": {
+                "amountIn": {
+                    "description": "BNB for BUY, Token for SELL",
+                    "type": "string"
+                },
+                "amountOut": {
+                    "type": "string"
+                },
+                "decisionReason": {
+                    "type": "string"
+                },
+                "force": {
+                    "type": "boolean"
+                },
+                "goldenDogScore": {
+                    "type": "integer"
+                },
+                "profitLoss": {
+                    "type": "number"
+                },
+                "strategyUsed": {
+                    "type": "string"
+                },
+                "tokenAddress": {
+                    "type": "string"
+                },
+                "tokenSymbol": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "BUY | SELL",
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.GoldenDogListResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.GoldenDogResponse"
+                    }
+                }
+            }
+        },
+        "handler.GoldenDogResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "analyzedAt": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "effectiveScore": {
+                    "type": "integer"
+                },
+                "goldenDogScore": {
+                    "type": "integer"
+                },
+                "isGoldenDog": {
+                    "type": "boolean"
+                },
+                "liquidity": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pairAddress": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "riskLevel": {
+                    "type": "string"
+                },
+                "riskScore": {
+                    "type": "integer"
+                },
+                "symbol": {
+                    "type": "string"
+                },
+                "timeDecayFactor": {
+                    "type": "number"
+                }
+            }
+        },
+        "handler.PendingTokenListResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.PendingTokenResponse"
+                    }
+                }
+            }
+        },
+        "handler.PendingTokenResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "creatorAddress": {
+                    "type": "string"
+                },
+                "liquidity": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pairAddress": {
+                    "type": "string"
+                },
+                "symbol": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.PeriodStat": {
+            "type": "object",
+            "properties": {
+                "avgPL": {
+                    "type": "number"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "period": {
+                    "type": "string"
+                },
+                "totalPL": {
+                    "type": "number"
+                },
+                "winRate": {
+                    "type": "number"
+                }
+            }
+        },
+        "handler.StrategyStat": {
+            "type": "object",
+            "properties": {
+                "avgPL": {
+                    "type": "number"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "strategy": {
+                    "type": "string"
+                },
+                "totalPL": {
+                    "type": "number"
+                },
+                "winRate": {
+                    "type": "number"
+                }
+            }
+        },
+        "handler.TokenDetailResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "analysisResult": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "analyzedAt": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "creatorAddress": {
+                    "type": "string"
+                },
+                "dex": {
+                    "type": "string"
+                },
+                "effectiveScore": {
+                    "type": "integer"
+                },
+                "goldenDogScore": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isGoldenDog": {
+                    "type": "boolean"
+                },
+                "liquidity": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pairAddress": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "riskDetails": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "riskLevel": {
+                    "type": "string"
+                },
+                "riskScore": {
+                    "type": "integer"
+                },
+                "symbol": {
+                    "type": "string"
+                },
+                "timeDecayFactor": {
+                    "type": "number"
+                }
+            }
+        },
+        "handler.TokenDetailResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/handler.TokenDetailResponse"
+                }
+            }
+        },
+        "handler.TokenListResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.TokenResponseDTO"
+                    }
+                }
+            }
+        },
+        "handler.TokenResponseDTO": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "analysis_status": {
+                    "type": "string"
+                },
+                "analyzed_at": {
+                    "type": "string"
+                },
+                "buy_tax": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "creator_address": {
+                    "type": "string"
+                },
+                "decimals": {
+                    "type": "integer"
+                },
+                "dex": {
+                    "type": "string"
+                },
+                "golden_dog_score": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "initial_liquidity": {
+                    "type": "string"
+                },
+                "is_golden_dog": {
+                    "type": "boolean"
+                },
+                "is_honeypot": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pair_address": {
+                    "type": "string"
+                },
+                "risk_level": {
+                    "type": "string"
+                },
+                "risk_score": {
+                    "type": "integer"
+                },
+                "sell_tax": {
+                    "type": "number"
+                },
+                "symbol": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.TokenResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/handler.TokenResponseDTO"
+                }
+            }
+        },
+        "handler.TradeListResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Trade"
+                    }
+                }
+            }
+        },
+        "handler.TradeResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/model.Trade"
+                }
+            }
+        },
+        "handler.TradeStatusUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.TradeStatusUpdateResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "handler.WalletBalanceResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "balance": {
+                    "type": "number"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.WalletConfigRequest": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.WithdrawRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.WithdrawResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "balance": {
+                    "type": "number"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.AITrade": {
+            "type": "object",
+            "properties": {
+                "amount_in": {
+                    "type": "string"
+                },
+                "amount_out": {
+                    "type": "string"
+                },
+                "block_number": {
+                    "type": "integer"
+                },
+                "current_value": {
+                    "type": "string"
+                },
+                "decision_reason": {
+                    "type": "string"
+                },
+                "error_message": {
+                    "type": "string"
+                },
+                "gas_used": {
+                    "type": "string"
+                },
+                "golden_dog_score": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "profit_loss": {
+                    "type": "number"
+                },
+                "status": {
+                    "description": "pending | success | failed",
+                    "type": "string"
+                },
+                "strategy_used": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "token_address": {
+                    "type": "string"
+                },
+                "token_symbol": {
+                    "type": "string"
+                },
+                "tx_hash": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "BUY | SELL",
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Trade": {
+            "type": "object",
+            "properties": {
+                "amount_in": {
+                    "type": "number"
+                },
+                "amount_out": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "gas_used": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "pending, success, failed",
+                    "type": "string"
+                },
+                "token_address": {
+                    "type": "string"
+                },
+                "token_symbol": {
+                    "type": "string"
+                },
+                "tx_hash": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "buy, sell",
+                    "type": "string"
+                },
+                "user_address": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "X-API-Key",
+            "in": "header"
+        }
+    }
+}

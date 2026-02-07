@@ -14,6 +14,8 @@ func Setup(
 	cfg *config.Config,
 	tokenHandler *handler.TokenHandler,
 	tradeHandler *handler.TradeHandler,
+	walletHandler *handler.WalletHandler,
+	aiTradeHandler *handler.AITradeHandler,
 	wsHub *handler.WebSocketHub,
 ) *gin.Engine {
 	r := gin.Default()
@@ -33,13 +35,25 @@ func Setup(
 	{
 		api.GET("/tokens", tokenHandler.GetTokens)
 		api.GET("/tokens/:address", tokenHandler.GetToken)
+		api.GET("/tokens/:address/detail", tokenHandler.GetTokenDetail)
 		api.GET("/tokens/pending", tokenHandler.GetPendingTokens)
 		api.GET("/tokens/analyzed", tokenHandler.GetAnalyzedTokens)
+		api.GET("/tokens/golden-dogs", tokenHandler.GetGoldenDogs)
 		api.POST("/tokens/:address/analysis", apiKeyMiddleware(cfg.ApiKey), tokenHandler.PostTokenAnalysis)
 
 		api.POST("/trades", tradeHandler.CreateTrade)
 		api.GET("/trades", tradeHandler.GetTrades)
 		api.PATCH("/trades/:txHash", tradeHandler.UpdateTradeStatus)
+
+		api.POST("/wallet/create", walletHandler.CreateWallet)
+		api.GET("/wallet/balance", walletHandler.GetWalletBalance)
+		api.POST("/wallet/withdraw", walletHandler.Withdraw)
+		api.POST("/wallet/execute-trade", walletHandler.ExecuteTrade)
+		api.POST("/wallet/config", walletHandler.UpsertWalletConfig)
+
+		api.GET("/ai-trades", aiTradeHandler.GetAITrades)
+		api.POST("/ai-trades", aiTradeHandler.CreateAITrade)
+		api.GET("/ai-trades/stats", aiTradeHandler.GetAITradeStats)
 	}
 
 	r.GET("/ws", wsHub.HandleWebSocket)

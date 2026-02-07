@@ -1,4 +1,4 @@
-.PHONY: dev build test web-dev web-build openclaw-build openclaw-agent \
+.PHONY: dev build test swag web-dev web-build openclaw-build openclaw-agent \
 	docker-up docker-up-build docker-down logs logs-openclaw logs-all
 
 COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo "docker compose"; fi)
@@ -11,6 +11,9 @@ build:
 
 test:
 	cd server && go test -v ./...
+
+swag:
+	./scripts/gen-swagger.sh
 
 web-dev:
 	cd web && npm run dev
