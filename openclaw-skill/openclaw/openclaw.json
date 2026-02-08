@@ -1,0 +1,46 @@
+{
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "anyrouter": {
+        "baseUrl": "https://anyrouter.top",
+        "apiKey": "sk-free",
+        "api": "anthropic-messages",
+        "models": [
+          {
+            "id": "claude-opus-4-5-20251101",
+            "name": "Claude Opus 4.5",
+            "reasoning": true,
+            "input": [
+              "text",
+              "image"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "anyrouter/claude-opus-4-5-20251101"
+      }
+    }
+  },
+  "gateway": {
+    "mode": "local"
+  },
+  "cron": {
+    "enabled": true,
+    "store": "/tmp/openclaw-state/cron/jobs.json",
+    "maxConcurrentRuns": 1
+  }
+}
