@@ -14,6 +14,7 @@ COPY src ./src
 COPY skills ./skills
 COPY openclaw.plugin.json ./openclaw.plugin.json
 COPY ./openclaw /app/openclaw
+COPY entrypoint.sh /app/entrypoint.sh
 
 RUN npm install --no-audit --no-fund
 RUN npm run build
