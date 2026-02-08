@@ -13,7 +13,6 @@ COPY index.ts ./index.ts
 COPY src ./src
 COPY skills ./skills
 COPY openclaw.plugin.json ./openclaw.plugin.json
-COPY openclaw ./openclaw
 COPY entrypoint.sh /app/entrypoint.sh
 
 RUN npm ci --no-audit --no-fund
@@ -36,7 +35,6 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/skills ./skills
 COPY --from=builder /app/openclaw.plugin.json ./openclaw.plugin.json
 COPY --from=builder /app/index.ts ./index.ts
-COPY --from=builder /app/openclaw ./openclaw
 COPY --from=builder /app/entrypoint.sh /app/entrypoint.sh
 
 ENV NODE_ENV=production
