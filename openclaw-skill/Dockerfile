@@ -24,10 +24,10 @@ FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g openclaw
+RUN npm install -g openclaw --no-audit --no-fund
 
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev --no-audit --no-fund
