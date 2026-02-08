@@ -2,7 +2,7 @@
 set -e
 
 STATE_DIR="${OPENCLAW_STATE_DIR:-/home/node/.openclaw}"
-CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-${STATE_DIR}/openclaw.json}"
+CONFIG_PATH="${STATE_DIR}/openclaw.json"
 CRON_DIR="${STATE_DIR}/cron"
 
 mkdir -p "${STATE_DIR}" "${CRON_DIR}"
