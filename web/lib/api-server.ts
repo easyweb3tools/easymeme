@@ -2,11 +2,14 @@ import { headers } from 'next/headers';
 import type { AITrade, AITradeStats, GoldenDogToken, Token, TokenDetail } from './api-types';
 
 function getServerBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
   const h = headers();
   const proto = h.get('x-forwarded-proto') || 'http';
   const host = h.get('x-forwarded-host') || h.get('host');
   if (!host) {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    return 'http://localhost:8080';
   }
   return `${proto}://${host}`;
 }

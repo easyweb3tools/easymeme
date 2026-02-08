@@ -42,11 +42,11 @@ Agent 自动：发现新代币 → AI 分析风险 → 识别金狗 → 自动�
 ```bash
 git clone https://github.com/easyweb3tools/easymeme
 cd easymeme
-export GEMINI_API_KEY=your_key
-docker compose up --build
+# 先修改脚本里的环境变量值
+./scripts/run-docker-compose.sh
 ```
 
-启动后访问 http://localhost:3000
+启动后访问 http://localhost
 
 ---
 
@@ -73,27 +73,23 @@ docker compose up --build
 ## 📦 本地开发
 
 **方式 A：一键启动（推荐）**
+编辑 `scripts/run-docker-compose.sh`，填入你的真实值：
+- `BSC_RPC_HTTP` / `BSC_RPC_WS`
+- `BSCSCAN_API_KEY`
+- `EASYMEME_API_KEY`
+- `EASYMEME_USER_ID`
+- `EASYMEME_API_HMAC_SECRET`
+- `WALLET_MASTER_KEY`
+- `OPENCLAW_GATEWAY_TOKEN`
+
 ```bash
-export GEMINI_API_KEY=your_key
-# 可选：自有 BSC RPC / BSCScan Key
-export BSC_RPC_HTTP=https://your-bsc-http
-export BSC_RPC_WS=wss://your-bsc-ws
-export BSCSCAN_API_KEY=your_bscscan_key
-export EASYMEME_API_KEY=your_api_key
-
-docker compose up -d --build
+# 一键启动
+./scripts/run-docker-compose.sh
 ```
 
-> OpenClaw 官方默认 provider 是 `anthropic`。如果要切换到 Gemini，需要在配置中设置模型，如：
-> `agents.defaults.model.primary = "google/gemini-3-flash"`，并提供 `GEMINI_API_KEY`。
-
-本仓库提供了默认的 `openclaw.json`（已设置为 Gemini）。
-如需使用其他 provider，请根据官方文档设置对应的 `API_KEY` 环境变量。
-Docker Compose 会把该文件挂载到 OpenClaw 配置路径，你可以直接编辑它切换模型。
-参考文档：
-```
-https://docs.openclaw.ai/concepts/model-providers
-```
+OpenClaw 配置会首次生成在 `/home/node/.openclaw/openclaw.json`（Docker 卷内）。
+如需使用其他 provider，请根据官方文档设置对应的 `API_KEY` 环境变量并修改该文件。
+参考文档：`https://docs.openclaw.ai/concepts/model-providers`
 
 **方式 B：分组件启动（便于调试）**
 
@@ -122,8 +118,6 @@ go run ./cmd/server
 ```bash
 cd web
 npm install
-export NEXT_PUBLIC_API_URL=http://localhost:8080
-export NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
 npm run dev
 ```
 
@@ -134,9 +128,7 @@ npm install && npm run build
 export EASYMEME_SERVER_URL=http://localhost:8080
 export EASYMEME_API_KEY=your_api_key
 export EASYMEME_USER_ID=default
-# ~/.openclaw/openclaw.json 里配置默认provider为Gemini时，设置GEMINI_API_KEY环境变量
-# 其他provider参考官方文档 https://docs.openclaw.ai/concepts/model-providers
-export GEMINI_API_KEY=your_key 
+export EASYMEME_API_HMAC_SECRET=your_hmac_secret
 openclaw plugins install --link ./
 openclaw plugins enable easymeme-openclaw-skill
 openclaw agent --local --session-id easymeme --message "分析代币"
@@ -146,6 +138,7 @@ openclaw agent --local --session-id easymeme --message "分析代币"
 - 确认 Server 已启动：`curl http://localhost:8080/health`
 - 确认 `EASYMEME_SERVER_URL` 可访问（Docker 场景注意端口映射）
 - 如设置了 `EASYMEME_API_KEY`，Server 也必须配置一致的 `EASYMEME_API_KEY`
+- 如设置了 `EASYMEME_API_HMAC_SECRET`，OpenClaw 也必须配置一致的 `EASYMEME_API_HMAC_SECRET`
 
 ---
 
@@ -156,6 +149,34 @@ OpenClaw Memory 用于：
 - 累积风险模式（成功/失败案例）
 - 动态调整金狗识别规则权重
 - 用户信誉系统（防投毒）
+
+---
+
+## 🤖 自动交易流程
+
+自动交易由 OpenClaw 驱动，主要有两种触发方式：
+
+1. **用户互动触发（Dialog / Telegram）**
+   - 用户在对话中请求分析某个代币
+   - OpenClaw 获取代币信息 → 生成风险分析 → 回写到 EasyMeme
+   - 若满足策略与风控（评分/风险等级/仓位限制），触发自动交易
+   - 示例对话：
+     - 用户：`分析 0x1234...abcd，这个能不能上车？`
+     - OpenClaw：`风险评分 72 / WARNING，金狗分 58。流动性一般，建议小仓位试单。是否执行 BUY 0.02 BNB？`
+     - 用户：`执行`
+     - OpenClaw：`已创建托管钱包并发起交易，等待链上确认。`
+
+2. **定时任务触发（Cron）**
+   - Cron 每 5 分钟唤醒一次
+   - 拉取待分析代币 → AI 评估 → 回写结果
+   - 命中策略与风控后自动执行交易
+
+**交易执行流程概览：**
+1. OpenClaw 请求托管钱包信息（地址/余额）
+2. 若钱包不存在，自动创建托管钱包
+3. 校验风控与策略阈值（评分、限额、仓位）
+4. 发起链上交易并写入 AI 交易记录
+5. 结果回写并更新 Memory（用于后续学习）
 
 ---
 

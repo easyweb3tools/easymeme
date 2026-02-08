@@ -1,7 +1,16 @@
 package router
 
 import (
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"io"
 	"net/http"
+	"strconv"
+	"sync"
+	"time"
 
 	"easymeme/internal/config"
 	"easymeme/internal/handler"
@@ -23,7 +32,7 @@ func Setup(
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.CorsAllowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-API-Key"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-API-Key", "X-User-Id", "X-Timestamp", "X-Nonce", "X-Signature"},
 		AllowCredentials: true,
 	}))
 
@@ -45,14 +54,19 @@ func Setup(
 		api.GET("/trades", tradeHandler.GetTrades)
 		api.PATCH("/trades/:txHash", tradeHandler.UpdateTradeStatus)
 
-		api.POST("/wallet/create", walletHandler.CreateWallet)
-		api.GET("/wallet/balance", walletHandler.GetWalletBalance)
-		api.POST("/wallet/withdraw", walletHandler.Withdraw)
-		api.POST("/wallet/execute-trade", walletHandler.ExecuteTrade)
-		api.POST("/wallet/config", walletHandler.UpsertWalletConfig)
+		api.GET("/wallet/info", walletHandler.GetWalletInfo)
+		walletAuth := chainMiddleware(
+			apiKeyUserMiddleware(cfg.ApiKey, cfg.ApiUserID),
+			hmacMiddleware(cfg.ApiHmacSecret),
+		)
+		api.POST("/wallet/create", walletAuth, walletHandler.CreateWallet)
+		api.GET("/wallet/balance", walletAuth, walletHandler.GetWalletBalance)
+		api.POST("/wallet/withdraw", walletAuth, walletHandler.Withdraw)
+		api.POST("/wallet/execute-trade", walletAuth, walletHandler.ExecuteTrade)
+		api.POST("/wallet/config", walletAuth, walletHandler.UpsertWalletConfig)
 
 		api.GET("/ai-trades", aiTradeHandler.GetAITrades)
-		api.POST("/ai-trades", aiTradeHandler.CreateAITrade)
+		api.POST("/ai-trades", walletAuth, aiTradeHandler.CreateAITrade)
 		api.GET("/ai-trades/stats", aiTradeHandler.GetAITradeStats)
 	}
 
@@ -75,4 +89,146 @@ func apiKeyMiddleware(expected string) gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+func apiKeyUserMiddleware(expectedKey, expectedUser string) gin.HandlerFunc {
+	if expectedKey == "" {
+		return func(c *gin.Context) {
+			c.Next()
+		}
+	}
+	return func(c *gin.Context) {
+		key := c.GetHeader("X-API-Key")
+		if key != expectedKey {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+		if expectedUser == "" {
+			c.Next()
+			return
+		}
+		userID := resolveUserID(c)
+		if userID == "" || userID != expectedUser {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "userId mismatch"})
+			return
+		}
+		c.Next()
+	}
+}
+
+func resolveUserID(c *gin.Context) string {
+	if userID := c.GetHeader("X-User-Id"); userID != "" {
+		return userID
+	}
+	if userID := c.Query("userId"); userID != "" {
+		return userID
+	}
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil || len(body) == 0 {
+		return ""
+	}
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return ""
+	}
+	if userID, ok := payload["userId"].(string); ok {
+		return userID
+	}
+	return ""
+}
+
+func chainMiddleware(middlewares ...gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		for _, mw := range middlewares {
+			mw(c)
+			if c.IsAborted() {
+				return
+			}
+		}
+	}
+}
+
+type nonceStore struct {
+	mu      sync.Mutex
+	entries map[string]time.Time
+	ttl     time.Duration
+}
+
+func newNonceStore(ttl time.Duration) *nonceStore {
+	return &nonceStore{
+		entries: make(map[string]time.Time),
+		ttl:     ttl,
+	}
+}
+
+func (s *nonceStore) seenOrAdd(nonce string) bool {
+	now := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for k, v := range s.entries {
+		if now.Sub(v) > s.ttl {
+			delete(s.entries, k)
+		}
+	}
+	if _, exists := s.entries[nonce]; exists {
+		return true
+	}
+	s.entries[nonce] = now
+	return false
+}
+
+var globalNonceStore = newNonceStore(10 * time.Minute)
+
+func hmacMiddleware(secret string) gin.HandlerFunc {
+	if secret == "" {
+		return func(c *gin.Context) {
+			c.Next()
+		}
+	}
+	return func(c *gin.Context) {
+		ts := c.GetHeader("X-Timestamp")
+		nonce := c.GetHeader("X-Nonce")
+		sig := c.GetHeader("X-Signature")
+		if ts == "" || nonce == "" || sig == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing signature headers"})
+			return
+		}
+		if globalNonceStore.seenOrAdd(nonce) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "nonce replay"})
+			return
+		}
+		tsInt, err := strconv.ParseInt(ts, 10, 64)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid timestamp"})
+			return
+		}
+		now := time.Now().Unix()
+		if tsInt < now-300 || tsInt > now+300 {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "timestamp out of range"})
+			return
+		}
+
+		body, _ := io.ReadAll(c.Request.Body)
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+		payload := buildSignaturePayload(c, ts, nonce, body)
+		expected := hmacSHA256Hex([]byte(secret), payload)
+		if !hmac.Equal([]byte(expected), []byte(sig)) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid signature"})
+			return
+		}
+		c.Next()
+	}
+}
+
+func buildSignaturePayload(c *gin.Context, ts, nonce string, body []byte) []byte {
+	uri := c.Request.URL.RequestURI()
+	method := c.Request.Method
+	return []byte(method + "\n" + uri + "\n" + ts + "\n" + nonce + "\n" + string(body))
+}
+
+func hmacSHA256Hex(secret []byte, payload []byte) string {
+	h := hmac.New(sha256.New, secret)
+	h.Write(payload)
+	return hex.EncodeToString(h.Sum(nil))
 }

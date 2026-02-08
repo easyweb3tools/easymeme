@@ -1,4 +1,5 @@
 import type { AITradePayload, PendingToken, TokenRiskAnalysis } from "./types.js";
+import crypto from "node:crypto";
 
 const DEFAULT_SERVER_URL = "http://localhost:8080";
 
@@ -14,6 +15,25 @@ function resolveServerUrl(override?: string): string {
   return DEFAULT_SERVER_URL;
 }
 
+function signRequest(method: string, path: string, body: string): Record<string, string> {
+  const secret = process.env.EASYMEME_API_HMAC_SECRET?.trim();
+  if (!secret) {
+    return {};
+  }
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+  const payload = `${method}\n${path}\n${timestamp}\n${nonce}\n${body}`;
+  const signature = crypto
+    .createHmac("sha256", secret)
+    .update(payload)
+    .digest("hex");
+  return {
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature
+  };
+}
+
 async function requestJson(
   path: string,
   init?: RequestInit,
@@ -22,11 +42,17 @@ async function requestJson(
   const base = resolveServerUrl(overrideUrl);
   const url = `${base}${path}`;
   const apiKey = process.env.EASYMEME_API_KEY?.trim();
+  const userId = process.env.EASYMEME_USER_ID?.trim();
+  const method = (init?.method || "GET").toUpperCase();
+  const body = typeof init?.body === "string" ? init.body : "";
+  const signatureHeaders = signRequest(method, path, body);
   const res = await fetch(url, {
     ...init,
     headers: {
       "Content-Type": "application/json",
       ...(apiKey ? { "X-API-Key": apiKey } : {}),
+      ...(userId ? { "X-User-Id": userId } : {}),
+      ...signatureHeaders,
       ...(init?.headers ?? {})
     }
   });
