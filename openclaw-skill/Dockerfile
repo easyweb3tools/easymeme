@@ -13,7 +13,7 @@ COPY index.ts ./index.ts
 COPY src ./src
 COPY skills ./skills
 COPY openclaw.plugin.json ./openclaw.plugin.json
-COPY ../openclaw /app/openclaw
+COPY ./openclaw /app/openclaw
 
 RUN npm install --no-audit --no-fund
 RUN npm run build
