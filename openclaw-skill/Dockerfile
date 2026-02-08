@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:22-bookworm
 
 WORKDIR /app
 
@@ -18,7 +18,12 @@ COPY entrypoint.sh /app/entrypoint.sh
 
 RUN npm install --no-audit --no-fund
 RUN npm run build
+RUN npm install -g openclaw
 
 ENV NODE_ENV=production
+ENV HOME=/home/node
+
+RUN chown -R node:node /app
+USER node
 
 CMD ["sh", "/app/entrypoint.sh"]

@@ -50,21 +50,24 @@ services:
     build:
       context: ./openclaw-skill
     environment:
+      - HOME=/home/node
       - EASYMEME_SERVER_URL=http://server:8080
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - EASYMEME_API_KEY=${EASYMEME_API_KEY:-}
       - EASYMEME_USER_ID=${EASYMEME_USER_ID:-default}
-      - OPENCLAW_STATE_DIR=/tmp/openclaw-state
-      - OPENCLAW_CONFIG_PATH=/tmp/openclaw-state/openclaw.json
+      - OPENCLAW_STATE_DIR=/home/node/.openclaw
+      - OPENCLAW_CONFIG_PATH=/home/node/.openclaw/openclaw.json
       - OPENCLAW_GATEWAY_PORT=${OPENCLAW_GATEWAY_PORT:-18789}
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      - OPENCLAW_GATEWAY_BIND=${OPENCLAW_GATEWAY_BIND:-lan}
     volumes:
-      - openclaw_state:/tmp/openclaw-state
+      - openclaw_state:/home/node/.openclaw
       - ./openclaw:/app/openclaw:ro
     depends_on:
       - server
     ports:
       - "18789:18789"
+    user: "0"
     restart: unless-stopped
     command: ["/app/entrypoint.sh"]
 
