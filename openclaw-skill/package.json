@@ -6,6 +6,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
+  "dependencies": {
+    "@sinclair/typebox": "^0.33.8"
+  },
   "devDependencies": {
     "openclaw": "2026.2.3-1",
     "typescript": "^5.5.4"
