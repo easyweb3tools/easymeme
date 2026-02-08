@@ -142,6 +142,39 @@ func (h *WalletHandler) GetWalletBalance(c *gin.Context) {
 	}})
 }
 
+// GetWalletInfo godoc
+// @Summary Get managed wallet info
+// @Description Get managed wallet address and balance (userId optional, fallback to EASYMEME_USER_ID)
+// @Tags wallet
+// @Param userId query string false "User ID"
+// @Success 200 {object} map[string]WalletBalanceResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/wallet/info [get]
+func (h *WalletHandler) GetWalletInfo(c *gin.Context) {
+	userID := strings.TrimSpace(c.Query("userId"))
+	if userID == "" {
+		userID = strings.TrimSpace(os.Getenv("EASYMEME_USER_ID"))
+	}
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "userId is required"})
+		return
+	}
+
+	wallet, err := h.repo.GetManagedWalletByUser(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "wallet not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": WalletBalanceResponse{
+		UserID:  wallet.UserID,
+		Address: wallet.Address,
+		Balance: wallet.Balance,
+	}})
+}
+
 type WithdrawRequest struct {
 	UserID string  `json:"userId"`
 	Amount float64 `json:"amount"`

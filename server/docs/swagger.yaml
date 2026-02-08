@@ -957,6 +957,43 @@ paths:
       summary: Execute trade
       tags:
       - wallet
+  /api/wallet/info:
+    get:
+      description: Get managed wallet address and balance (userId optional, fallback
+        to EASYMEME_USER_ID)
+      parameters:
+      - description: User ID
+        in: query
+        name: userId
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              $ref: '#/definitions/handler.WalletBalanceResponse'
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get managed wallet info
+      tags:
+      - wallet
   /api/wallet/withdraw:
     post:
       description: Decrease managed wallet balance (placeholder, no on-chain tx)

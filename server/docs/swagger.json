@@ -734,6 +734,61 @@
                 }
             }
         },
+        "/api/wallet/info": {
+            "get": {
+                "description": "Get managed wallet address and balance (userId optional, fallback to EASYMEME_USER_ID)",
+                "tags": [
+                    "wallet"
+                ],
+                "summary": "Get managed wallet info",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "#/definitions/handler.WalletBalanceResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/wallet/withdraw": {
             "post": {
                 "description": "Decrease managed wallet balance (placeholder, no on-chain tx)",

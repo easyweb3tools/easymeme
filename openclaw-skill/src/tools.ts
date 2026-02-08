@@ -125,6 +125,10 @@ const ExecuteTradeSchema = Type.Object({
   force: Type.Optional(Type.Boolean())
 });
 
+const WalletInfoSchema = Type.Object({
+  userId: Type.Optional(Type.String())
+});
+
 const WalletConfigSchema = Type.Object({
   userId: Type.Optional(Type.String()),
   config: Type.Optional(Type.Object({}, { additionalProperties: true }))
@@ -374,6 +378,24 @@ export function createUpsertWalletConfigTool(options?: { serverUrl?: string; use
       const config =
         (params.config as Record<string, unknown> | undefined) ?? {};
       const result = await upsertWalletConfig(userId, config, options?.serverUrl);
+      return jsonResult({ ok: true, result });
+    }
+  };
+}
+
+export function createGetWalletInfoTool(options?: { serverUrl?: string; userId?: string }): AnyAgentTool {
+  return {
+    label: "Get Wallet Info",
+    name: "getWalletInfo",
+    description: "Fetch managed wallet address and balance for deposits.",
+    parameters: WalletInfoSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const userId =
+        readStringParam(params, "userId") ||
+        options?.userId ||
+        process.env.EASYMEME_USER_ID ||
+        "default";
+      const result = await getWalletBalance(userId, options?.serverUrl);
       return jsonResult({ ok: true, result });
     }
   };
