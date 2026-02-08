@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getAITrades, getAITradeStats } from '@/lib/api';
+import { getAITrades, getAITradeStats } from '@/lib/api-server';
 
 type AITradesPageProps = {
   searchParams?: { [key: string]: string | string[] | undefined };
