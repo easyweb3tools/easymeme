@@ -13,10 +13,11 @@ COPY index.ts ./index.ts
 COPY src ./src
 COPY skills ./skills
 COPY openclaw.plugin.json ./openclaw.plugin.json
+COPY ../openclaw /app/openclaw
 
 RUN npm install --no-audit --no-fund
 RUN npm run build
 
 ENV NODE_ENV=production
 
-CMD ["sh", "-c", "if [ -f /app/openclaw.json ] && [ ! -f /tmp/openclaw-state/openclaw.json ]; then cp /app/openclaw.json /tmp/openclaw-state/openclaw.json; fi && ./node_modules/.bin/openclaw plugins install --link ./ && ./node_modules/.bin/openclaw plugins enable easymeme-openclaw-skill && while true; do ./node_modules/.bin/openclaw agent --local --session-id easymeme --message \"获取待分析代币 -> AI 分析 -> 回写结果\"; sleep 300; done"]
+CMD ["sh", "/app/entrypoint.sh"]
