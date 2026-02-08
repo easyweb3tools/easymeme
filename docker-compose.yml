@@ -46,21 +46,33 @@ services:
       - server
     restart: unless-stopped
 
-  openclaw:
+  openclaw-gateway:
     build:
       context: ./openclaw-skill
     environment:
       - EASYMEME_SERVER_URL=http://server:8080
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - EASYMEME_API_KEY=${EASYMEME_API_KEY:-}
+      - EASYMEME_USER_ID=${EASYMEME_USER_ID:-default}
       - OPENCLAW_STATE_DIR=/tmp/openclaw-state
       - OPENCLAW_CONFIG_PATH=/tmp/openclaw-state/openclaw.json
+      - OPENCLAW_GATEWAY_PORT=${OPENCLAW_GATEWAY_PORT:-18789}
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
     volumes:
       - openclaw_state:/tmp/openclaw-state
       - ./openclaw.json:/app/openclaw.json:ro
+      - ./openclaw/cron:/tmp/openclaw-state/cron
     depends_on:
       - server
+    ports:
+      - "18789:18789"
     restart: unless-stopped
+    command:
+      [
+        "sh",
+        "-c",
+        "cp /app/openclaw.json /tmp/openclaw-state/openclaw.json && ./node_modules/.bin/openclaw plugins install --link ./ && ./node_modules/.bin/openclaw plugins enable easymeme-openclaw-skill && ./node_modules/.bin/openclaw gateway --port ${OPENCLAW_GATEWAY_PORT:-18789} --verbose --allow-unconfigured --token ${OPENCLAW_GATEWAY_TOKEN}"
+      ]
 
 volumes:
   postgres_data:
