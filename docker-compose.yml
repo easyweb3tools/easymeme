@@ -60,19 +60,13 @@ services:
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
     volumes:
       - openclaw_state:/tmp/openclaw-state
-      - ./openclaw.json:/app/openclaw.json:ro
-      - ./openclaw/cron:/tmp/openclaw-state/cron
+      - ./openclaw:/app/openclaw:ro
     depends_on:
       - server
     ports:
       - "18789:18789"
     restart: unless-stopped
-    command:
-      [
-        "sh",
-        "-c",
-        "cp /app/openclaw.json /tmp/openclaw-state/openclaw.json && ./node_modules/.bin/openclaw plugins install --link ./ && ./node_modules/.bin/openclaw plugins enable easymeme-openclaw-skill && ./node_modules/.bin/openclaw gateway --port ${OPENCLAW_GATEWAY_PORT:-18789} --verbose --allow-unconfigured --token ${OPENCLAW_GATEWAY_TOKEN}"
-      ]
+    command: ["/app/entrypoint.sh"]
 
 volumes:
   postgres_data:
