@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getTokenDetail } from '@/lib/api';
+import { getTokenDetail } from '@/lib/api-server';
 import { CopyButton } from '@/components/copy-button';
 
 export const dynamic = 'force-dynamic';

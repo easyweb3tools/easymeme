@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
-import { Token } from '@/lib/api';
+import { Token } from '@/lib/api-types';
 
 const PANCAKE_ROUTER = process.env.NEXT_PUBLIC_PANCAKE_ROUTER || '';
 const WBNB = process.env.NEXT_PUBLIC_WBNB || '';

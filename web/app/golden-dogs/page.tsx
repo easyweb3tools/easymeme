@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getGoldenDogs } from '@/lib/api';
+import { getGoldenDogs } from '@/lib/api-server';
 
 type GoldenDogsPageProps = {
   searchParams?: { [key: string]: string | string[] | undefined };

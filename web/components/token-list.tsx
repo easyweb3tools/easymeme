@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Token, getTokens, createWebSocket } from '@/lib/api';
+import { Token } from '@/lib/api-types';
+import { getTokens, createWebSocket } from '@/lib/api-client';
 import { TokenCard } from './token-card';
 
 export function TokenList() {

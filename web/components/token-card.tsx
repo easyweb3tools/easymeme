@@ -1,6 +1,6 @@
 'use client';
 
-import { Token } from '@/lib/api';
+import { Token } from '@/lib/api-types';
 import { RiskBadge } from './risk-badge';
 import { TradePanel } from './trade-panel';
 import { useState } from 'react';
