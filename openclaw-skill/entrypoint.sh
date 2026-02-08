@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -e
 
-STATE_DIR="${OPENCLAW_STATE_DIR:-/tmp/openclaw-state}"
+STATE_DIR="${OPENCLAW_STATE_DIR:-/home/node/.openclaw}"
 CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-${STATE_DIR}/openclaw.json}"
 CRON_DIR="${STATE_DIR}/cron"
 
@@ -15,11 +15,11 @@ if [ -d /app/openclaw/cron ]; then
   cp -R /app/openclaw/cron/* "${CRON_DIR}/"
 fi
 
-./node_modules/.bin/openclaw plugins install --link ./
-./node_modules/.bin/openclaw plugins enable easymeme-openclaw-skill
+OPENCLAW_CMD="openclaw plugins install --link /app && openclaw plugins enable easymeme-openclaw-skill && openclaw gateway --bind ${OPENCLAW_GATEWAY_BIND:-lan} --port ${OPENCLAW_GATEWAY_PORT:-18789} --verbose --allow-unconfigured --token ${OPENCLAW_GATEWAY_TOKEN}"
 
-./node_modules/.bin/openclaw gateway \
-  --port "${OPENCLAW_GATEWAY_PORT:-18789}" \
-  --verbose \
-  --allow-unconfigured \
-  --token "${OPENCLAW_GATEWAY_TOKEN}"
+if [ "$(id -u)" = "0" ]; then
+  chown -R node:node "${STATE_DIR}"
+  exec su -s /bin/sh node -c "${OPENCLAW_CMD}"
+fi
+
+exec sh -c "${OPENCLAW_CMD}"

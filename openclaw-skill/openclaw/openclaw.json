@@ -40,7 +40,7 @@
   },
   "cron": {
     "enabled": true,
-    "store": "/tmp/openclaw-state/cron/jobs.json",
+    "store": "/home/node/.openclaw/cron/jobs.json",
     "maxConcurrentRuns": 1
   }
 }

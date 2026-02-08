@@ -1,4 +1,24 @@
 {
   "version": 1,
-  "jobs": []
+  "jobs": [
+    {
+      "jobId": "easymeme-golden-dogs",
+      "name": "EasyMeme Golden Dogs",
+      "enabled": true,
+      "schedule": {
+        "kind": "cron",
+        "expr": "*/5 * * * *",
+        "tz": "UTC"
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "next-heartbeat",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "获取待分析代币 -> AI 分析 -> 回写结果 -> 如符合条件执行自动交易"
+      },
+      "delivery": {
+        "mode": "none"
+      }
+    }
+  ]
 }
