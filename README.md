@@ -24,9 +24,13 @@ Agent 自动：发现新代币 → AI 分析风险 → 识别金狗 → 自动�
 
 **最新自动交易实测（已跑通）**
 
-![Auto Trade 1](./demo/auto-trade-1.png)
-
-![Auto Trade 2](./demo/auto-trade-2.png)
+<p>
+  <img src="./demo/auto-trade-1.png" alt="Auto Trade 1" width="300" />
+  <img src="./demo/auto-trade-2.png" alt="Auto Trade 2" width="300" />
+  <br />
+  <img src="./demo/auto-trade-3.png" alt="Auto Trade 3" width="300" />
+  <img src="./demo/auto-trade-4.png" alt="Auto Trade 4" width="300" />
+</p>
 
 **链上证明**
 [链上交易哈希（BSCScan）](https://bscscan.com/tx/0x5b4ea9543d106146d45e0e77e2c940dff36d1872103334ede761899e4c841d8f)
