@@ -16,6 +16,11 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: 'EasyMeme - BNB Chain Meme Token Scanner',
   description: 'AI-powered meme coin discovery and trading tool',
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({

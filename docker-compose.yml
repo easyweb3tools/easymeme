@@ -52,7 +52,6 @@ services:
     environment:
       - HOME=/home/node
       - EASYMEME_SERVER_URL=http://server:8080
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - EASYMEME_API_KEY=${EASYMEME_API_KEY:-}
       - EASYMEME_USER_ID=${EASYMEME_USER_ID:-default}
       - EASYMEME_NOTIFY_CHANNEL=${EASYMEME_NOTIFY_CHANNEL:-}
