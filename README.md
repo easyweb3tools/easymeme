@@ -197,7 +197,7 @@ OpenClaw Memory 用于：
 
 **Good Vibes Only: OpenClaw Edition**
 
-本项目参与 BNB Chain 黑客松 Agent Track。
+本项目参与 [BNB Chain 黑客松](https://www.bnbchain.org/en/blog/win-a-share-of-100k-with-good-vibes-only-openclaw-edition) Agent Track。
 
 ---
 
