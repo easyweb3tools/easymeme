@@ -22,6 +22,15 @@
 
 Agent 自动：发现新代币 → AI 分析风险 → 识别金狗 → 自动交易
 
+**最新自动交易实测（已跑通）**
+
+![Auto Trade 1](./demo/auto-trade-1.png)
+
+![Auto Trade 2](./demo/auto-trade-2.png)
+
+**链上证明**
+[链上交易哈希（BSCScan）](https://bscscan.com/tx/0x5b4ea9543d106146d45e0e77e2c940dff36d1872103334ede761899e4c841d8f)
+
 ---
 
 ## 🔗 为什么必须用 OpenClaw
@@ -177,14 +186,6 @@ OpenClaw Memory 用于：
 3. 校验风控与策略阈值（评分、限额、仓位）
 4. 发起链上交易并写入 AI 交易记录
 5. 结果回写并更新 Memory（用于后续学习）
-
----
-
-## 📊 链上证明
-
-- **Network**: BNB Smart Chain (BSC)
-- **Data Source**: BSCScan API + RPC
-- **DEX**: PancakeSwap V2
 
 ---
 
