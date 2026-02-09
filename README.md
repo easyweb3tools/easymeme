@@ -1,4 +1,4 @@
-# 🐕 EasyMeme - 你的专属 AI Meme 币猎手
+# 🐕 EasyMeme - 你的专属 Meme 币 AI 交易助手
 
 > 自动发现、分析、交易 BNB Chain 上的金狗
 
@@ -21,6 +21,19 @@
 ![Demo](./demo/recording.gif)
 
 Agent 自动：发现新代币 → AI 分析风险 → 识别金狗 → 自动交易
+
+**最新自动交易实测（已跑通）**
+
+<p>
+  <img src="./demo/auto-trade-1.png" alt="Auto Trade 1" width="300" />
+  <img src="./demo/auto-trade-2.png" alt="Auto Trade 2" width="300" />
+  <br />
+  <img src="./demo/auto-trade-3.png" alt="Auto Trade 3" width="300" />
+  <img src="./demo/auto-trade-4.png" alt="Auto Trade 4" width="300" />
+</p>
+
+**链上证明**
+[链上交易哈希（BSCScan）](https://bscscan.com/tx/0x5b4ea9543d106146d45e0e77e2c940dff36d1872103334ede761899e4c841d8f)
 
 ---
 
@@ -180,19 +193,11 @@ OpenClaw Memory 用于：
 
 ---
 
-## 📊 链上证明
-
-- **Network**: BNB Smart Chain (BSC)
-- **Data Source**: BSCScan API + RPC
-- **DEX**: PancakeSwap V2
-
----
-
 ## 🏆 Hackathon
 
 **Good Vibes Only: OpenClaw Edition**
 
-本项目参与 BNB Chain 黑客松 Agent Track。
+本项目参与 [BNB Chain 黑客松](https://www.bnbchain.org/en/blog/win-a-share-of-100k-with-good-vibes-only-openclaw-edition) Agent Track。
 
 ---
 
