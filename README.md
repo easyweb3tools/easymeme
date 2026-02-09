@@ -1,4 +1,4 @@
-# 🐕 EasyMeme - 你的专属 AI Meme 币猎手
+# 🐕 EasyMeme - 你的专属 Meme 币 AI 交易助手
 
 > 自动发现、分析、交易 BNB Chain 上的金狗
 

@@ -54,7 +54,15 @@ JSON
 fi
 
 if [ ! -f "${CRON_DIR}/jobs.json" ]; then
-  cat > "${CRON_DIR}/jobs.json" <<'JSON'
+  NOTIFY_CHANNEL="${EASYMEME_NOTIFY_CHANNEL:-}"
+  NOTIFY_TO="${EASYMEME_NOTIFY_TO:-}"
+  if [ -n "${NOTIFY_CHANNEL}" ] && [ -n "${NOTIFY_TO}" ]; then
+    NOTIFY_NOTE="如发现高质量金狗，请使用 message 工具发送通知：channel=${NOTIFY_CHANNEL}, to=${NOTIFY_TO}。消息需包含代币名称、地址、goldenDogScore、riskScore、建议。"
+  else
+    NOTIFY_NOTE="若已配置 EASYMEME_NOTIFY_CHANNEL 与 EASYMEME_NOTIFY_TO，请在发现金狗时发送通知。"
+  fi
+
+  cat > "${CRON_DIR}/jobs.json" <<JSON
 {
   "version": 1,
   "jobs": [
@@ -65,7 +73,7 @@ if [ ! -f "${CRON_DIR}/jobs.json" ]; then
       "schedule": { "kind": "cron", "expr": "*/5 * * * *", "tz": "UTC" },
       "sessionTarget": "isolated",
       "wakeMode": "next-heartbeat",
-      "payload": { "kind": "agentTurn", "message": "获取待分析代币 -> AI 分析 -> 回写结果 -> 如符合条件执行自动交易" },
+      "payload": { "kind": "agentTurn", "message": "获取待分析代币 -> AI 分析 -> 回写结果 -> 如符合条件执行自动交易。${NOTIFY_NOTE}" },
       "delivery": { "mode": "none" }
     }
   ]
