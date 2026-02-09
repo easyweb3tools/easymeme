@@ -254,14 +254,18 @@ export default async function AITradesPage({ searchParams }: AITradesPageProps) 
                       Error: {trade.error_message}
                     </p>
                   )}
-                  <a
-                    className="text-white/70 hover:text-white text-xs"
-                    href={`https://bscscan.com/tx/${trade.tx_hash}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {shortenHash(trade.tx_hash)}
-                  </a>
+                  {trade.tx_hash ? (
+                    <a
+                      className="text-white/70 hover:text-white text-xs"
+                      href={`https://bscscan.com/tx/${trade.tx_hash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      BscScan: {shortenHash(trade.tx_hash)}
+                    </a>
+                  ) : (
+                    <p className="text-xs text-white/50">BscScan: N/A</p>
+                  )}
                 </div>
               </div>
             </div>

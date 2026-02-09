@@ -17,9 +17,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <header className="px-6 py-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-[#ffbf5c] text-black flex items-center justify-center font-semibold">
-              EM
-            </div>
+            <img
+              src="/logo.png"
+              alt="EasyMeme"
+              className="h-10 w-10 rounded-xl object-cover border border-white/10 bg-white/5"
+            />
             <div>
               <p className="text-lg font-semibold">EasyMeme</p>
               <p className="text-xs text-white/60">Personal AI meme hunter</p>
