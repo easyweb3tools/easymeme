@@ -69,3 +69,15 @@ export type AIPosition = {
   cost_bnb?: string;
   updated_at?: string;
 };
+
+export type GoldenDogScoreDistributionBucket = {
+  range: string;
+  count: number;
+};
+
+export type TokenPricePoint = {
+  ts: string;
+  price: number;
+  liquidityUsd?: number;
+  volume5mUsd?: number;
+};
