@@ -247,6 +247,18 @@ func (r *Repository) UpsertAIPosition(ctx context.Context, pos *model.AIPosition
 	return r.db.WithContext(ctx).Create(pos).Error
 }
 
+func (r *Repository) ListAIPositionsByUser(ctx context.Context, userID string) ([]model.AIPosition, error) {
+	var positions []model.AIPosition
+	err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		Order("updated_at DESC").
+		Find(&positions).Error
+	if err != nil {
+		return nil, err
+	}
+	return positions, nil
+}
+
 func (r *Repository) GetAITradeStats(ctx context.Context) (count int64, winRate float64, avgPL float64, err error) {
 	var trades []model.AITrade
 	if err = r.db.WithContext(ctx).Find(&trades).Error; err != nil {

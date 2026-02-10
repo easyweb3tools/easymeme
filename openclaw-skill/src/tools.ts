@@ -4,10 +4,12 @@ import {
   createWallet,
   executeTrade,
   fetchPendingTokens,
+  getPositions,
   getWalletBalance,
   submitAnalysis,
   upsertWalletConfig
 } from "./server-api.js";
+import { notifySellTrade } from "./notify.js";
 import {
   applyFeedback,
   estimateScore,
@@ -112,10 +114,12 @@ const RecordOutcomeSchema = Type.Object({
 });
 
 const ExecuteTradeSchema = Type.Object({
-  tokenAddress: Type.String(),
+  tokenAddress: Type.Optional(Type.String()),
   tokenSymbol: Type.Optional(Type.String()),
   type: Type.Union([Type.Literal("BUY"), Type.Literal("SELL")]),
-  amountIn: Type.Optional(Type.String()),
+  amountIn: Type.Optional(
+    Type.Union([Type.String(), Type.Number()])
+  ),
   amountOut: Type.Optional(Type.String()),
   goldenDogScore: Type.Optional(Type.Number()),
   decisionReason: Type.Optional(Type.String()),
@@ -127,6 +131,11 @@ const ExecuteTradeSchema = Type.Object({
 
 const WalletInfoSchema = Type.Object({
   userId: Type.Optional(Type.String())
+});
+
+const PositionsSchema = Type.Object({
+  userId: Type.Optional(Type.String()),
+  format: Type.Optional(Type.Union([Type.Literal("summary"), Type.Literal("detailed")]))
 });
 
 const WalletConfigSchema = Type.Object({
@@ -314,10 +323,16 @@ export function createExecuteTradeTool(options?: { serverUrl?: string; userId?: 
       "Execute an auto trade using managed wallet and record it as an AI trade.",
     parameters: ExecuteTradeSchema,
     execute: async (_toolCallId: string, params: Record<string, unknown>) => {
-      const tokenAddress = readStringParam(params, "tokenAddress", { required: true });
+      const tokenAddress = readStringParam(params, "tokenAddress");
       const tokenSymbol = readStringParam(params, "tokenSymbol");
       const type = readStringParam(params, "type", { required: true }) as "BUY" | "SELL";
-      const amountIn = readStringParam(params, "amountIn");
+      const amountInRaw = params.amountIn as unknown;
+      let amountIn: string | undefined;
+      if (typeof amountInRaw === "number") {
+        amountIn = amountInRaw.toString();
+      } else if (typeof amountInRaw === "string") {
+        amountIn = amountInRaw.trim();
+      }
       const amountOut = readStringParam(params, "amountOut");
       const decisionReason = readStringParam(params, "decisionReason");
       const strategyUsed = readStringParam(params, "strategyUsed");
@@ -341,10 +356,27 @@ export function createExecuteTradeTool(options?: { serverUrl?: string; userId?: 
         }
       }
 
+      let resolvedTokenAddress = tokenAddress;
+      if (!resolvedTokenAddress && tokenSymbol) {
+        const positions = await getPositions(userId, options?.serverUrl);
+        const match = positions.find(
+          (pos) =>
+            (pos.token_symbol || "").toLowerCase() === tokenSymbol.toLowerCase()
+        );
+        if (match?.token_address) {
+          resolvedTokenAddress = match.token_address;
+        } else {
+          throw new Error(`tokenSymbol not found in positions: ${tokenSymbol}`);
+        }
+      }
+      if (!resolvedTokenAddress) {
+        throw new Error("tokenAddress is required");
+      }
+
       const result = await executeTrade(
         {
           userId,
-          tokenAddress,
+          tokenAddress: resolvedTokenAddress,
           tokenSymbol: tokenSymbol || undefined,
           type,
           amountIn: amountIn || undefined,
@@ -357,6 +389,17 @@ export function createExecuteTradeTool(options?: { serverUrl?: string; userId?: 
         },
         options?.serverUrl,
       );
+
+      if (type === "SELL") {
+        await notifySellTrade(
+          {
+            tokenAddress: resolvedTokenAddress,
+            tokenSymbol: tokenSymbol || undefined,
+            amountIn: amountIn || undefined
+          },
+          result
+        );
+      }
 
       return jsonResult({ ok: true, result });
     }
@@ -397,6 +440,35 @@ export function createGetWalletInfoTool(options?: { serverUrl?: string; userId?:
         "default";
       const result = await getWalletBalance(userId, options?.serverUrl);
       return jsonResult({ ok: true, result });
+    }
+  };
+}
+
+export function createGetPositionsTool(options?: { serverUrl?: string; userId?: string }): AnyAgentTool {
+  return {
+    label: "Get AI Positions",
+    name: "getPositions",
+    description: "Fetch current AI positions for a user to decide sell amounts.",
+    parameters: PositionsSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const userId =
+        readStringParam(params, "userId") ||
+        options?.userId ||
+        process.env.EASYMEME_USER_ID ||
+        "default";
+      const format = readStringParam(params, "format") || "summary";
+      const positions = await getPositions(userId, options?.serverUrl);
+      if (format === "detailed") {
+        return jsonResult({ ok: true, positions, count: positions.length });
+      }
+      const summary = positions.map((pos) => {
+        const qty = pos.quantity ?? "0";
+        const cost = pos.cost_bnb ?? "0";
+        const symbol = pos.token_symbol || "UNKNOWN";
+        const updated = pos.updated_at || "unknown";
+        return `${symbol} | ${pos.token_address} | qty=${qty} | cost=${cost} | updated=${updated}`;
+      });
+      return jsonResult({ ok: true, positions: summary, count: summary.length });
     }
   };
 }

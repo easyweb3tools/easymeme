@@ -180,6 +180,56 @@ type WithdrawRequest struct {
 	Amount float64 `json:"amount"`
 }
 
+type AIPositionResponse struct {
+	UserID       string `json:"user_id"`
+	TokenAddress string `json:"token_address"`
+	TokenSymbol  string `json:"token_symbol"`
+	Quantity     string `json:"quantity"`
+	CostBNB      string `json:"cost_bnb"`
+	UpdatedAt    string `json:"updated_at"`
+}
+
+// GetAIPositions godoc
+// @Summary Get AI positions
+// @Description Get AI positions by user (userId optional, fallback to EASYMEME_USER_ID)
+// @Tags ai-trades
+// @Param userId query string false "User ID"
+// @Success 200 {object} map[string][]AIPositionResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/ai-positions [get]
+func (h *WalletHandler) GetAIPositions(c *gin.Context) {
+	userID := strings.TrimSpace(c.Query("userId"))
+	if userID == "" {
+		userID = strings.TrimSpace(os.Getenv("EASYMEME_USER_ID"))
+	}
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "userId is required"})
+		return
+	}
+
+	positions, err := h.repo.ListAIPositionsByUser(c.Request.Context(), userID)
+	if err != nil {
+		log.Printf("list ai positions: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load positions"})
+		return
+	}
+
+	resp := make([]AIPositionResponse, 0, len(positions))
+	for _, pos := range positions {
+		resp = append(resp, AIPositionResponse{
+			UserID:       pos.UserID,
+			TokenAddress: pos.TokenAddress,
+			TokenSymbol:  pos.TokenSymbol,
+			Quantity:     pos.Quantity.String(),
+			CostBNB:      pos.CostBNB.String(),
+			UpdatedAt:    pos.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": resp})
+}
+
 type WithdrawResponse struct {
 	UserID  string  `json:"userId"`
 	Address string  `json:"address"`
@@ -381,13 +431,24 @@ func (h *WalletHandler) ExecuteTrade(c *gin.Context) {
 			return
 		}
 
-		amountInWei, err := parseAmountToWei(req.AmountIn, req.Type, h.eth, tokenAddr)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid amountIn"})
-			return
-		}
+		var amountInWei *big.Int
+		var err error
 		minOutWei, _ := parseAmountToWei(req.AmountOut, req.Type, h.eth, tokenAddr)
 		_, _, decimals, _ := h.eth.GetTokenInfo(ctx, tokenAddr)
+
+		if strings.EqualFold(req.AmountIn, "ALL") || strings.EqualFold(req.AmountIn, "100%") {
+			amountInWei = tokenBalance
+			req.AmountIn = formatAmount(amountInWei, int32(decimals))
+		} else if ratio, ok := parseRatioAmount(req.AmountIn); ok {
+			amountInWei = applyRatio(tokenBalance, ratio)
+			req.AmountIn = formatAmount(amountInWei, int32(decimals))
+		} else {
+			amountInWei, err = parseAmountToWei(req.AmountIn, req.Type, h.eth, tokenAddr)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid amountIn"})
+				return
+			}
+		}
 
 		if config.Enabled && !req.Force {
 			if config.StopLoss < 0 && req.ProfitLoss <= config.StopLoss {
@@ -757,6 +818,25 @@ func applyRatio(value *big.Int, ratio float64) *big.Int {
 	dec := decimal.NewFromBigInt(value, 0)
 	out := dec.Mul(decimal.NewFromFloat(ratio))
 	return out.BigInt()
+}
+
+func parseRatioAmount(value string) (float64, bool) {
+	text := strings.TrimSpace(value)
+	if text == "" {
+		return 0, false
+	}
+	trimmed := strings.TrimSuffix(text, "%")
+	ratio, err := strconv.ParseFloat(trimmed, 64)
+	if err != nil {
+		return 0, false
+	}
+	if strings.HasSuffix(text, "%") {
+		ratio = ratio / 100
+	}
+	if ratio <= 0 || ratio > 1 {
+		return 0, false
+	}
+	return ratio, true
 }
 
 func (h *WalletHandler) loadWalletConfig(ctx context.Context, userID string) (AutoTradeConfig, error) {

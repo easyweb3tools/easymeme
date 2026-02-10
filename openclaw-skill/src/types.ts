@@ -50,7 +50,7 @@ export type AITradePayload = {
   tokenAddress: string;
   tokenSymbol?: string;
   type: "BUY" | "SELL";
-  amountIn?: string;
+  amountIn?: string | number;
   amountOut?: string;
   txHash?: string;
   goldenDogScore?: number;
@@ -59,4 +59,13 @@ export type AITradePayload = {
   currentValue?: string;
   profitLoss?: number;
   force?: boolean;
+};
+
+export type AIPosition = {
+  user_id: string;
+  token_address: string;
+  token_symbol?: string;
+  quantity?: string;
+  cost_bnb?: string;
+  updated_at?: string;
 };

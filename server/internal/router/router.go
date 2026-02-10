@@ -55,6 +55,7 @@ func Setup(
 		api.PATCH("/trades/:txHash", tradeHandler.UpdateTradeStatus)
 
 		api.GET("/wallet/info", walletHandler.GetWalletInfo)
+		api.GET("/ai-positions", walletHandler.GetAIPositions)
 		walletAuth := chainMiddleware(
 			apiKeyUserMiddleware(cfg.ApiKey, cfg.ApiUserID),
 			hmacMiddleware(cfg.ApiHmacSecret),
