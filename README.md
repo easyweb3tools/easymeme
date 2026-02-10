@@ -18,7 +18,7 @@
 
 ## 🎬 Demo
 
-[▶️ 查看演示视频 (YouTube)](https://youtube.com/shorts/pRXXaUhgaRE?feature=share)
+[![Demo Video](https://img.youtube.com/vi/pRXXaUhgaRE/hqdefault.jpg)](https://youtube.com/shorts/pRXXaUhgaRE?feature=share)
 
 
 **最新自动交易实测（已跑通）**
