@@ -25,6 +25,9 @@ export type MemoryState = {
     outcome: "MOON" | "RUG" | "FLAT";
     maxGain?: number;
     maxLoss?: number;
+    isGoldenDog?: boolean;
+    riskFactors?: RiskFactors;
+    confidenceWeight?: number;
     timestamp: string;
   }>;
   feedbacks?: UserFeedback[];
@@ -62,6 +65,11 @@ export type RulePerformance = {
   total: number;
   accuracy: number;
   updatedAt: string;
+};
+
+export type PerformanceWindow = {
+  window: "7d" | "30d" | "all";
+  byRule: RulePerformance[];
 };
 
 function resolveMemoryPath() {
@@ -187,6 +195,19 @@ export function applyFeedback(
   return next;
 }
 
+export function decayFeedbackWeight(
+  baseWeight: number,
+  userFeedbackCount: number,
+  userReputation: number,
+): number {
+  const clampedBase = Math.max(0, Math.min(1, baseWeight));
+  const count = Math.max(1, userFeedbackCount);
+  const countDecay = 1 / (1 + Math.log10(count));
+  const repBoost = 0.7 + Math.max(0, Math.min(100, userReputation)) / 100 * 0.3;
+  const decayed = clampedBase * countDecay * repBoost;
+  return Math.max(0.05, Math.min(1, decayed));
+}
+
 export function upsertUserReputation(
   list: UserReputation[] | undefined,
   input: { userId: string; reputation: number }
@@ -247,4 +268,96 @@ export function updateRulePerformanceOnOutcome(
     updatedAt: now
   });
   return next;
+}
+
+function isFactorPredictionCorrect(
+  level: "LOW" | "MEDIUM" | "HIGH" | undefined,
+  outcome: "MOON" | "RUG" | "FLAT",
+): boolean | null {
+  if (!level || outcome === "FLAT") {
+    return null;
+  }
+  if (outcome === "RUG") {
+    return level === "HIGH" || level === "MEDIUM";
+  }
+  return level === "LOW";
+}
+
+export function updateFactorPerformanceOnOutcome(
+  list: RulePerformance[] | undefined,
+  input: {
+    outcome: "MOON" | "RUG" | "FLAT";
+    riskFactors?: RiskFactors;
+    confidenceWeight?: number;
+  },
+): RulePerformance[] {
+  const next = Array.isArray(list) ? [...list] : [];
+  if (input.outcome === "FLAT" || !input.riskFactors) {
+    return next;
+  }
+  const now = new Date().toISOString();
+  const weight = Math.max(0.1, Math.min(1, input.confidenceWeight ?? 1));
+  const entries: Array<[string, "LOW" | "MEDIUM" | "HIGH" | undefined]> = [
+    ["factor_honeypot", input.riskFactors.honeypotRisk],
+    ["factor_tax", input.riskFactors.taxRisk],
+    ["factor_owner", input.riskFactors.ownerRisk],
+    ["factor_concentration", input.riskFactors.concentrationRisk],
+  ];
+  for (const [ruleId, level] of entries) {
+    const correct = isFactorPredictionCorrect(level, input.outcome);
+    if (correct === null) {
+      continue;
+    }
+    const idx = next.findIndex((entry) => entry.ruleId === ruleId);
+    if (idx >= 0) {
+      const updated = { ...next[idx] };
+      updated.total += weight;
+      if (correct) {
+        updated.correct += weight;
+      }
+      updated.accuracy = updated.total > 0 ? updated.correct / updated.total : 0;
+      updated.updatedAt = now;
+      next[idx] = updated;
+      continue;
+    }
+    next.push({
+      ruleId,
+      correct: correct ? weight : 0,
+      total: weight,
+      accuracy: correct ? 1 : 0,
+      updatedAt: now
+    });
+  }
+  return next;
+}
+
+export function buildPerformanceWindows(state: MemoryState): PerformanceWindow[] {
+  const outcomes = Array.isArray(state.outcomes) ? state.outcomes : [];
+  const now = Date.now();
+  const build = (days: number | null, window: "7d" | "30d" | "all"): PerformanceWindow => {
+    const from = days === null ? 0 : now - days * 24 * 60 * 60 * 1000;
+    let rulePerf: RulePerformance[] = [];
+    for (const out of outcomes) {
+      const ts = Date.parse(out.timestamp || "");
+      if (Number.isNaN(ts) || ts < from) {
+        continue;
+      }
+      rulePerf = updateRulePerformanceOnOutcome(rulePerf, {
+        ruleId: "golden_dog_decision",
+        outcome: out.outcome,
+        isGoldenDog: out.isGoldenDog
+      });
+      rulePerf = updateFactorPerformanceOnOutcome(rulePerf, {
+        outcome: out.outcome,
+        riskFactors: out.riskFactors,
+        confidenceWeight: out.confidenceWeight
+      });
+    }
+    return { window, byRule: rulePerf };
+  };
+  return [
+    build(7, "7d"),
+    build(30, "30d"),
+    build(null, "all"),
+  ];
 }

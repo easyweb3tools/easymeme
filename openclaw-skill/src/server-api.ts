@@ -89,12 +89,33 @@ function normalizeToken(raw: unknown): PendingToken | null {
       typeof record.creatorAddress === "string" ? record.creatorAddress : undefined,
     createdAt: typeof record.createdAt === "string" ? record.createdAt : undefined,
     pairAddress: typeof record.pairAddress === "string" ? record.pairAddress : undefined,
-    contractCode: typeof record.contractCode === "string" ? record.contractCode : undefined,
-    holderDistribution: Array.isArray(record.holderDistribution)
-      ? (record.holderDistribution as PendingToken["holderDistribution"])
+    goplus:
+      record.goplus && typeof record.goplus === "object"
+        ? (record.goplus as PendingToken["goplus"])
+        : undefined,
+    dexscreener:
+      record.dexscreener && typeof record.dexscreener === "object"
+        ? (record.dexscreener as PendingToken["dexscreener"])
+        : undefined,
+    marketAlerts: Array.isArray(record.marketAlerts)
+      ? (record.marketAlerts as PendingToken["marketAlerts"])
       : undefined,
-    creatorHistory: Array.isArray(record.creatorHistory)
-      ? (record.creatorHistory as PendingToken["creatorHistory"])
+    socialSignals:
+      record.socialSignals && typeof record.socialSignals === "object"
+        ? (record.socialSignals as PendingToken["socialSignals"])
+        : undefined,
+    smartMoneySignals:
+      record.smartMoneySignals && typeof record.smartMoneySignals === "object"
+        ? (record.smartMoneySignals as PendingToken["smartMoneySignals"])
+        : undefined,
+    contractCode: typeof record.contractCode === "string" ? record.contractCode : undefined,
+    holderDistribution:
+      record.holderDistribution && typeof record.holderDistribution === "object"
+        ? (record.holderDistribution as PendingToken["holderDistribution"])
+      : undefined,
+    creatorHistory:
+      record.creatorHistory && typeof record.creatorHistory === "object"
+        ? (record.creatorHistory as PendingToken["creatorHistory"])
       : undefined
   };
 }

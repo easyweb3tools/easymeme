@@ -12,13 +12,17 @@ import {
 import { notifySellTrade } from "./notify.js";
 import {
   applyFeedback,
+  buildPerformanceWindows,
+  decayFeedbackWeight,
   estimateScore,
   loadMemory,
   saveMemory,
+  updateFactorPerformanceOnOutcome,
   updateWeights,
   updateRulePerformanceOnOutcome,
   upsertUserReputation
 } from "./memory.js";
+import { buildAnalysisDraft } from "./risk-mapper.js";
 
 type AnyAgentTool = any;
 const HolderInfoSchema = Type.Object(
@@ -50,9 +54,24 @@ const TokenSchema = Type.Object({
   creatorAddress: Type.Optional(Type.String()),
   createdAt: Type.Optional(Type.String()),
   pairAddress: Type.Optional(Type.String()),
+  goplus: Type.Optional(Type.Object({}, { additionalProperties: true })),
+  dexscreener: Type.Optional(Type.Object({}, { additionalProperties: true })),
+  marketAlerts: Type.Optional(Type.Array(Type.Object({}, { additionalProperties: true }))),
+  socialSignals: Type.Optional(Type.Object({}, { additionalProperties: true })),
+  smartMoneySignals: Type.Optional(Type.Object({}, { additionalProperties: true })),
   contractCode: Type.Optional(Type.String()),
-  holderDistribution: Type.Optional(Type.Array(HolderInfoSchema)),
-  creatorHistory: Type.Optional(Type.Array(CreatorTxSchema))
+  holderDistribution: Type.Optional(
+    Type.Union([
+      Type.Array(HolderInfoSchema),
+      Type.Object({}, { additionalProperties: true })
+    ])
+  ),
+  creatorHistory: Type.Optional(
+    Type.Union([
+      Type.Array(CreatorTxSchema),
+      Type.Object({}, { additionalProperties: true })
+    ])
+  )
 });
 
 const RiskFactorsSchema = Type.Object({
@@ -84,6 +103,10 @@ const FetchPendingTokensSchema = Type.Object({
   limit: Type.Optional(Type.Number())
 });
 
+const BuildAnalysisDraftSchema = Type.Object({
+  token: TokenSchema
+});
+
 const AnalyzeTokenRiskSchema = Type.Object({
   token: TokenSchema,
   analysis: AnalysisSchema
@@ -108,9 +131,15 @@ const RecordOutcomeSchema = Type.Object({
   lessonsLearned: Type.Optional(Type.String()),
   analysis: Type.Optional(
     Type.Object({
-      isGoldenDog: Type.Optional(Type.Boolean())
+      isGoldenDog: Type.Optional(Type.Boolean()),
+      riskFactors: Type.Optional(RiskFactorsSchema),
+      confidenceWeight: Type.Optional(Type.Number())
     })
   )
+});
+
+const RulePerformanceReportSchema = Type.Object({
+  includeWindows: Type.Optional(Type.Boolean())
 });
 
 const ExecuteTradeSchema = Type.Object({
@@ -201,7 +230,8 @@ export function createFetchPendingTokensTool(options?: { serverUrl?: string }): 
   return {
     label: "Fetch Pending Tokens",
     name: "fetchPendingTokens",
-    description: "Fetch tokens pending analysis from the EasyMeme server API.",
+    description:
+      "Fetch enriched tokens pending analysis from the EasyMeme server API, including goplus, dexscreener, holderDistribution, creatorHistory, and marketAlerts fields when available.",
     parameters: FetchPendingTokensSchema,
     execute: async (_toolCallId: string, params: Record<string, unknown>) => {
       const limit = readNumberParam(params, "limit") ?? 10;
@@ -210,6 +240,25 @@ export function createFetchPendingTokensTool(options?: { serverUrl?: string }): 
         options?.serverUrl,
       );
       return jsonResult({ tokens, count: tokens.length });
+    }
+  };
+}
+
+export function createBuildAnalysisDraftTool(): AnyAgentTool {
+  return {
+    label: "Build Analysis Draft",
+    name: "buildAnalysisDraft",
+    description:
+      "Build a deterministic analysis draft from enriched token fields (GoPlus/DEXScreener/holder data).",
+    parameters: BuildAnalysisDraftSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const token = params.token as any;
+      if (!token || typeof token !== "object" || typeof token.address !== "string") {
+        throw new Error("token.address is required");
+      }
+      const draft = buildAnalysisDraft(token);
+      await ensureGoldenDogScore(draft as unknown as Record<string, unknown>);
+      return jsonResult({ tokenAddress: token.address, analysis: draft });
     }
   };
 }
@@ -284,7 +333,13 @@ export function createRecordOutcomeTool(): AnyAgentTool {
         | "FLAT";
       const maxGain = readNumberParam(params, "maxGain");
       const maxLoss = readNumberParam(params, "maxLoss");
-      const analysis = params.analysis as { isGoldenDog?: boolean } | undefined;
+      const analysis = params.analysis as
+        | { isGoldenDog?: boolean; riskFactors?: any; confidenceWeight?: number }
+        | undefined;
+      const confidenceWeight =
+        typeof analysis?.confidenceWeight === "number"
+          ? Math.max(0.1, Math.min(1, analysis.confidenceWeight))
+          : 1;
 
       const memory = await loadMemory();
       memory.outcomes.push({
@@ -292,6 +347,9 @@ export function createRecordOutcomeTool(): AnyAgentTool {
         outcome,
         maxGain: typeof maxGain === "number" ? maxGain : undefined,
         maxLoss: typeof maxLoss === "number" ? maxLoss : undefined,
+        isGoldenDog: analysis?.isGoldenDog,
+        riskFactors: analysis?.riskFactors,
+        confidenceWeight,
         timestamp: new Date().toISOString()
       });
       memory.weights = updateWeights(memory.weights, {
@@ -302,6 +360,11 @@ export function createRecordOutcomeTool(): AnyAgentTool {
         ruleId: "golden_dog_decision",
         outcome,
         isGoldenDog: analysis?.isGoldenDog
+      });
+      memory.rulePerformance = updateFactorPerformanceOnOutcome(memory.rulePerformance, {
+        outcome,
+        riskFactors: analysis?.riskFactors,
+        confidenceWeight
       });
       memory.updatedAt = new Date().toISOString();
       await saveMemory(memory);
@@ -473,6 +536,26 @@ export function createGetPositionsTool(options?: { serverUrl?: string; userId?: 
   };
 }
 
+export function createGetRulePerformanceReportTool(): AnyAgentTool {
+  return {
+    label: "Get Rule Performance",
+    name: "getRulePerformanceReport",
+    description:
+      "Get rule performance report including 7d/30d/all windows for golden dog and risk-factor rules.",
+    parameters: RulePerformanceReportSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const includeWindows = params.includeWindows !== false;
+      const memory = await loadMemory();
+      const windows = buildPerformanceWindows(memory);
+      if (!includeWindows) {
+        const latest = windows.find((w) => w.window === "all");
+        return jsonResult({ ok: true, report: latest });
+      }
+      return jsonResult({ ok: true, report: windows });
+    }
+  };
+}
+
 export function createRecordUserFeedbackTool(): AnyAgentTool {
   return {
     label: "Record User Feedback",
@@ -492,9 +575,11 @@ export function createRecordUserFeedbackTool(): AnyAgentTool {
         | "TELEGRAM";
       const rep = readNumberParam(params, "userReputation");
       const reputation = typeof rep === "number" ? Math.max(0, Math.min(100, rep)) : 30;
-      const weight = reputation / 100;
 
       const memory = await loadMemory();
+      const existingUser = (memory.userReputations || []).find((u) => u.userId === userId);
+      const baseWeight = reputation / 100;
+      const weight = decayFeedbackWeight(baseWeight, (existingUser?.feedbackCount || 0) + 1, reputation);
       const feedback = {
         tokenAddress,
         feedbackType,

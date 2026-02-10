@@ -2,10 +2,12 @@ import { Type } from "@sinclair/typebox";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import {
   createAnalyzeTokenRiskTool,
+  createBuildAnalysisDraftTool,
   createEstimateGoldenDogScoreTool,
   createFetchPendingTokensTool,
   createExecuteTradeTool,
   createGetPositionsTool,
+  createGetRulePerformanceReportTool,
   createGetWalletInfoTool,
   createRecordOutcomeTool,
   createRecordUserFeedbackTool,
@@ -28,6 +30,7 @@ const plugin = {
     api.registerTool((ctx) =>
       createFetchPendingTokensTool({ serverUrl: (ctx.config as any)?.serverUrl })
     );
+    api.registerTool(createBuildAnalysisDraftTool());
     api.registerTool(createAnalyzeTokenRiskTool());
     api.registerTool(createEstimateGoldenDogScoreTool());
     api.registerTool((ctx) =>
@@ -57,6 +60,7 @@ const plugin = {
         userId: (ctx.config as any)?.userId
       })
     );
+    api.registerTool(createGetRulePerformanceReportTool());
     api.registerTool(createRecordOutcomeTool());
     api.registerTool(createRecordUserFeedbackTool());
   }

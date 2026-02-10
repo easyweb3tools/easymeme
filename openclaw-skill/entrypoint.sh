@@ -82,10 +82,17 @@ if [ ! -f "${CRON_DIR}/jobs.json" ]; then
 JSON
 fi
 
+GATEWAY_ARGS="--bind ${OPENCLAW_GATEWAY_BIND:-lan} --port ${OPENCLAW_GATEWAY_PORT:-18789} --verbose --allow-unconfigured"
+if [ -n "${OPENCLAW_GATEWAY_TOKEN:-}" ]; then
+  GATEWAY_ARGS="${GATEWAY_ARGS} --token ${OPENCLAW_GATEWAY_TOKEN}"
+  echo "OpenClaw gateway token mode: enabled"
+else
+  echo "OpenClaw gateway token mode: disabled (OPENCLAW_GATEWAY_TOKEN is empty)"
+fi
+
 OPENCLAW_CMD="openclaw plugins install --link /app \
   && openclaw plugins enable easymeme-openclaw-skill \
-  && openclaw gateway run --bind ${OPENCLAW_GATEWAY_BIND:-lan} --port ${OPENCLAW_GATEWAY_PORT:-18789} \
-     --verbose --allow-unconfigured --token ${OPENCLAW_GATEWAY_TOKEN}"
+  && openclaw gateway run ${GATEWAY_ARGS}"
 
 if [ "$(id -u)" = "0" ]; then
   chown -R node:node "${STATE_DIR}"

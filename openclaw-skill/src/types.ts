@@ -23,9 +23,14 @@ export type PendingToken = {
   creatorAddress?: string;
   createdAt?: string;
   pairAddress?: string;
+  goplus?: Record<string, unknown>;
+  dexscreener?: Record<string, unknown>;
+  marketAlerts?: Record<string, unknown>[];
+  socialSignals?: Record<string, unknown>;
+  smartMoneySignals?: Record<string, unknown>;
   contractCode?: string;
-  holderDistribution?: HolderInfo[];
-  creatorHistory?: CreatorTx[];
+  holderDistribution?: Record<string, unknown> | HolderInfo[];
+  creatorHistory?: Record<string, unknown> | CreatorTx[];
   [key: string]: unknown;
 };
 

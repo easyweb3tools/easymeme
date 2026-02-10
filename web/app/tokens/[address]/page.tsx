@@ -44,14 +44,14 @@ export default async function TokenDetailPage({ params, searchParams }: TokenDet
   const gmgnUrl = `https://gmgn.ai/bsc/token/${token.address}`;
   const bscScanUrl = `https://bscscan.com/address/${token.address}`;
   const riskFactors =
-    (token.riskDetails?.risk_factors as Record<string, string> | undefined) ??
-    (token.analysisResult?.riskFactors as Record<string, string> | undefined);
+    (token.analysisResult?.riskFactors as Record<string, string> | undefined) ??
+    (token.riskDetails?.risk_factors as Record<string, string> | undefined);
   const reasoning =
-    (token.riskDetails?.reasoning as string | undefined) ??
-    (token.analysisResult?.reasoning as string | undefined);
+    (token.analysisResult?.reasoning as string | undefined) ??
+    (token.riskDetails?.reasoning as string | undefined);
   const recommendation =
-    (token.riskDetails?.recommendation as string | undefined) ??
-    (token.analysisResult?.recommendation as string | undefined);
+    (token.analysisResult?.recommendation as string | undefined) ??
+    (token.riskDetails?.recommendation as string | undefined);
 
   return (
     <div className="min-h-screen px-6 pb-16">

@@ -8,28 +8,38 @@ import (
 )
 
 type Token struct {
-	ID               string          `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	Address          string          `gorm:"uniqueIndex;not null" json:"address"`
-	Name             string          `json:"name"`
-	Symbol           string          `json:"symbol"`
-	Decimals         int             `gorm:"default:18" json:"decimals"`
-	PairAddress      string          `json:"pair_address"`
-	Dex              string          `gorm:"default:pancakeswap" json:"dex"`
-	InitialLiquidity decimal.Decimal `gorm:"type:decimal(36,18)" json:"initial_liquidity"`
-	AnalysisStatus   string          `gorm:"default:pending" json:"analysis_status"` // pending, analyzed
-	RiskScore        int             `gorm:"default:0" json:"risk_score"`
-	RiskLevel        string          `gorm:"default:pending" json:"risk_level"` // pending, safe, warning, danger
-	RiskDetails      datatypes.JSON  `json:"risk_details"`
-	AnalysisResult   datatypes.JSON  `json:"analysis_result"`
-	IsGoldenDog      bool            `gorm:"default:false" json:"is_golden_dog"`
-	GoldenDogScore   int             `gorm:"default:0" json:"golden_dog_score"`
-	IsHoneypot       bool            `gorm:"default:false" json:"is_honeypot"`
-	BuyTax           float64         `json:"buy_tax"`
-	SellTax          float64         `json:"sell_tax"`
-	CreatorAddress   string          `json:"creator_address"`
-	CreatedAt        time.Time       `gorm:"autoCreateTime;index" json:"created_at"`
-	UpdatedAt        time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
-	AnalyzedAt       *time.Time      `json:"analyzed_at"`
+	ID                  string          `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	Address             string          `gorm:"uniqueIndex;not null" json:"address"`
+	Name                string          `json:"name"`
+	Symbol              string          `json:"symbol"`
+	Decimals            int             `gorm:"default:18" json:"decimals"`
+	PairAddress         string          `json:"pair_address"`
+	Dex                 string          `gorm:"default:pancakeswap" json:"dex"`
+	InitialLiquidity    decimal.Decimal `gorm:"type:decimal(36,18)" json:"initial_liquidity"`
+	AnalysisStatus      string          `gorm:"default:pending" json:"analysis_status"` // pending, enriching, enrich_failed, enriched, analyzed
+	EnrichError         string          `json:"enrich_error"`
+	EnrichAttempts      int             `gorm:"default:0" json:"enrich_attempts"`
+	EnrichedAt          *time.Time      `json:"enriched_at"`
+	RiskScore           int             `gorm:"default:0" json:"risk_score"`
+	RiskLevel           string          `gorm:"default:pending" json:"risk_level"` // pending, safe, warning, danger
+	RiskDetails         datatypes.JSON  `json:"risk_details"`
+	MarketData          datatypes.JSON  `json:"market_data"`
+	HolderData          datatypes.JSON  `json:"holder_data"`
+	CreatorHistory      datatypes.JSON  `json:"creator_history"`
+	MarketAlerts        datatypes.JSON  `json:"market_alerts"`
+	SocialSignals       datatypes.JSON  `json:"social_signals"`
+	SmartMoneySignals   datatypes.JSON  `json:"smart_money_signals"`
+	LastMarketRefreshAt *time.Time      `json:"last_market_refresh_at"`
+	AnalysisResult      datatypes.JSON  `json:"analysis_result"`
+	IsGoldenDog         bool            `gorm:"default:false" json:"is_golden_dog"`
+	GoldenDogScore      int             `gorm:"default:0" json:"golden_dog_score"`
+	IsHoneypot          bool            `gorm:"default:false" json:"is_honeypot"`
+	BuyTax              float64         `json:"buy_tax"`
+	SellTax             float64         `json:"sell_tax"`
+	CreatorAddress      string          `json:"creator_address"`
+	CreatedAt           time.Time       `gorm:"autoCreateTime;index" json:"created_at"`
+	UpdatedAt           time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
+	AnalyzedAt          *time.Time      `json:"analyzed_at"`
 }
 
 func (Token) TableName() string {

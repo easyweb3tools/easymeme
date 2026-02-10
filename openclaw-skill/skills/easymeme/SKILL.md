@@ -12,19 +12,23 @@ Continuously analyze pending BNB Chain tokens from the EasyMeme server, decide i
 ## Required tools
 
 - `fetchPendingTokens`
+- `buildAnalysisDraft`
 - `analyzeTokenRisk`
 - `estimateGoldenDogScore`
 - `submitAnalysis`
 - `executeTrade`
 - `upsertWalletConfig`
 - `recordOutcome`
+- `getRulePerformanceReport`
 - `recordUserFeedback`
 
 ## Workflow (follow in order)
 
 1. Call `fetchPendingTokens` (default limit 10). If the list is empty, reply that there are no pending tokens and stop.
 2. For each token:
-   - Produce an analysis JSON (as plain text first) in the exact schema required by `analyzeTokenRisk`.
+   - First call `buildAnalysisDraft` to generate a deterministic baseline analysis from enriched fields.
+   - Then refine the analysis JSON (as plain text first) in the exact schema required by `analyzeTokenRisk`.
+   - Prefer `token.goplus` and `token.dexscreener` fields as primary evidence (do not invent missing data).
    - Call `estimateGoldenDogScore` using the analysis inputs to get a learned `goldenDogScore`.
    - Verify the JSON includes all required fields.
    - Then call `analyzeTokenRisk` with `{ token, analysis }`.
@@ -48,6 +52,12 @@ Two-step rule (critical):
 - `riskFactors`: honeypotRisk, taxRisk, ownerRisk, concentrationRisk (LOW | MEDIUM | HIGH)
 - `reasoning`: concise explanation referencing observed data
 - `recommendation`: short user-facing suggestion
+
+Risk mapping baseline:
+- `token.goplus.is_honeypot = "1"` -> `honeypotRisk: HIGH`
+- High `buy_tax` / `sell_tax` from GoPlus -> raise `taxRisk`
+- GoPlus owner privileges (e.g. mint/proxy/take ownership) -> raise `ownerRisk`
+- DEXScreener txns/liquidity imbalance + holder concentration clues -> raise `concentrationRisk`
 
 Before calling `submitAnalysis`, construct a complete JSON object that includes every field above. Do not omit any field.
 
@@ -147,7 +157,14 @@ When a trade outcome is known, call `recordOutcome` with the result to update lo
   "maxGain": 1.6,
   "maxLoss": -0.1,
   "analysis": {
-    "isGoldenDog": true
+    "isGoldenDog": true,
+    "riskFactors": {
+      "honeypotRisk": "LOW",
+      "taxRisk": "MEDIUM",
+      "ownerRisk": "LOW",
+      "concentrationRisk": "MEDIUM"
+    },
+    "confidenceWeight": 0.8
   }
 }
 ```

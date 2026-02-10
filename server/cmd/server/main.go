@@ -47,7 +47,7 @@ func main() {
 	wsHub := handler.NewWebSocketHub()
 	go wsHub.Run()
 
-	scanner := service.NewScanner(ethClient, repo, wsHub)
+	scanner := service.NewScanner(ethClient, repo, wsHub, cfg.BscScanAPIKey)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -61,7 +61,7 @@ func main() {
 	walletHandler := handler.NewWalletHandler(repo, ethClient)
 	aiTradeHandler := handler.NewAITradeHandler(repo)
 
-	r := router.Setup(cfg, tokenHandler, tradeHandler, walletHandler, aiTradeHandler, wsHub)
+	r := router.Setup(cfg, tokenHandler, tradeHandler, walletHandler, aiTradeHandler, wsHub, scanner)
 
 	go func() {
 		log.Printf("Server starting on port %s", cfg.Port)

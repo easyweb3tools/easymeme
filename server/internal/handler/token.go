@@ -199,13 +199,20 @@ func (h *TokenHandler) GetTokenDetail(c *gin.Context) {
 }
 
 type PendingTokenResponse struct {
-	Address        string    `json:"address"`
-	Name           string    `json:"name"`
-	Symbol         string    `json:"symbol"`
-	Liquidity      float64   `json:"liquidity"`
-	CreatorAddress string    `json:"creatorAddress"`
-	CreatedAt      time.Time `json:"createdAt"`
-	PairAddress    string    `json:"pairAddress"`
+	Address            string    `json:"address"`
+	Name               string    `json:"name"`
+	Symbol             string    `json:"symbol"`
+	Liquidity          float64   `json:"liquidity"`
+	CreatorAddress     string    `json:"creatorAddress"`
+	CreatedAt          time.Time `json:"createdAt"`
+	PairAddress        string    `json:"pairAddress"`
+	GoPlus             any       `json:"goplus"`
+	DEXScreener        any       `json:"dexscreener"`
+	HolderDistribution any       `json:"holderDistribution"`
+	CreatorHistory     any       `json:"creatorHistory"`
+	MarketAlerts       any       `json:"marketAlerts"`
+	SocialSignals      any       `json:"socialSignals"`
+	SmartMoneySignals  any       `json:"smartMoneySignals"`
 }
 
 type PendingTokenListResponseEnvelope struct {
@@ -245,14 +252,58 @@ func (h *TokenHandler) GetPendingTokens(c *gin.Context) {
 
 	resp := make([]PendingTokenResponse, 0, len(tokens))
 	for _, token := range tokens {
+		goplusData := map[string]interface{}{}
+		if len(token.RiskDetails) > 0 {
+			var details map[string]interface{}
+			_ = json.Unmarshal(token.RiskDetails, &details)
+			if normalized, ok := details["normalized"].(map[string]interface{}); ok {
+				goplusData = normalized
+				if raw, exists := details["raw"]; exists {
+					goplusData["raw"] = raw
+				}
+			} else {
+				goplusData = details
+			}
+		}
+		marketData := map[string]interface{}{}
+		if len(token.MarketData) > 0 {
+			_ = json.Unmarshal(token.MarketData, &marketData)
+		}
+		holderData := map[string]interface{}{}
+		if len(token.HolderData) > 0 {
+			_ = json.Unmarshal(token.HolderData, &holderData)
+		}
+		creatorData := map[string]interface{}{}
+		if len(token.CreatorHistory) > 0 {
+			_ = json.Unmarshal(token.CreatorHistory, &creatorData)
+		}
+		alertData := []map[string]interface{}{}
+		if len(token.MarketAlerts) > 0 {
+			_ = json.Unmarshal(token.MarketAlerts, &alertData)
+		}
+		socialSignals := map[string]interface{}{}
+		if len(token.SocialSignals) > 0 {
+			_ = json.Unmarshal(token.SocialSignals, &socialSignals)
+		}
+		smartMoneySignals := map[string]interface{}{}
+		if len(token.SmartMoneySignals) > 0 {
+			_ = json.Unmarshal(token.SmartMoneySignals, &smartMoneySignals)
+		}
 		resp = append(resp, PendingTokenResponse{
-			Address:        token.Address,
-			Name:           token.Name,
-			Symbol:         token.Symbol,
-			Liquidity:      token.InitialLiquidity.InexactFloat64(),
-			CreatorAddress: token.CreatorAddress,
-			CreatedAt:      token.CreatedAt,
-			PairAddress:    token.PairAddress,
+			Address:            token.Address,
+			Name:               token.Name,
+			Symbol:             token.Symbol,
+			Liquidity:          token.InitialLiquidity.InexactFloat64(),
+			CreatorAddress:     token.CreatorAddress,
+			CreatedAt:          token.CreatedAt,
+			PairAddress:        token.PairAddress,
+			GoPlus:             goplusData,
+			DEXScreener:        marketData,
+			HolderDistribution: holderData,
+			CreatorHistory:     creatorData,
+			MarketAlerts:       alertData,
+			SocialSignals:      socialSignals,
+			SmartMoneySignals:  smartMoneySignals,
 		})
 	}
 
@@ -531,20 +582,11 @@ func (h *TokenHandler) PostTokenAnalysis(c *gin.Context) {
 
 	now := time.Now().UTC()
 	riskLevel := strings.ToLower(payload.RiskLevel)
-	riskDetails := map[string]interface{}{
-		"risk_factors":     payload.RiskFactors,
-		"reasoning":        payload.Reasoning,
-		"recommendation":   payload.Recommendation,
-		"is_golden_dog":    payload.IsGoldenDog,
-		"golden_dog_score": payload.GoldenDogScore,
-	}
-	riskDetailsJSON, _ := json.Marshal(riskDetails)
 	analysisJSON, _ := json.Marshal(raw)
 
 	updates := map[string]interface{}{
 		"risk_score":       payload.RiskScore,
 		"risk_level":       riskLevel,
-		"risk_details":     riskDetailsJSON,
 		"analysis_result":  analysisJSON,
 		"analysis_status":  "analyzed",
 		"is_golden_dog":    payload.IsGoldenDog,

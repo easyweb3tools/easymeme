@@ -1,531 +1,649 @@
-# EasyMeme - BNB Chain 自治 Agent 产品规格书
+# EasyMeme — Product Specification for Codex
 
-> **本文档供 Codex 开发使用** | 最后更新: 2026-02-07
-
----
-
-## 1. 产品定位
-
-**EasyMeme 是什么：**
-一个**长期运行**在 BNB Chain 上的**自治 Agent**，能够持续发现、判断、跟踪 Meme 币机会，并**自动执行交易**。
-
-**核心理念：**
-- **金狗有时效性** - 代币的"金狗"属性会随时间衰减，识别规则必须动态演进
-- **OpenClaw 是学习型 Agent** - 通过 Memory 积累实战经验，从用户互动中学习
-- **去中心化个人部署** - EasyMeme 本质上服务个人，建议每个人搭建自己的 AI 交易系统
-
-> 📌 **开源地址**: https://github.com/easyweb3tools/easymeme
-
-**为什么必须用 OpenClaw 构建：**
-- Agent 自主决策：不是规则触发，而是 AI 判断
-- Memory 积累经验：记住风险模式，从成功/失败中学习
-- Cron 持续运行：自动唤醒，无需外部调度
-- 用户互动学习：通过 OpenClaw Dialog / Telegram 与用户对话
+> **This document is the single source of truth for Codex development.**
+> Last updated: 2026-02-10
+> Related: [Data Quality Review](review-logs/2026-02-10-data-quality-review.md)
 
 ---
 
-## 2. 系统架构
+## 1. What Is EasyMeme
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                        EasyMeme MVP V2                                │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                       │
-│  ┌─────────────┐    ┌──────────────────┐    ┌─────────────────────┐  │
-│  │   Web UI    │◄──►│     Server       │◄──►│   OpenClaw Agent    │  │
-│  │  (Next.js)  │    │     (Go)         │    │                     │  │
-│  └─────────────┘    └──────────────────┘    └─────────────────────┘  │
-│        │                    │                        │                │
-│        │                    │                        │                │
-│  ┌─────▼─────┐       ┌──────▼──────┐         ┌──────▼──────┐         │
-│  │ 外部交易  │       │  PostgreSQL │         │  Agent 钱包  │         │
-│  │ (GMGN等)  │       │  + Memory   │         │ (托管交易)   │         │
-│  └───────────┘       └─────────────┘         └─────────────┘         │
-│                                                                       │
-└──────────────────────────────────────────────────────────────────────┘
-```
+An autonomous AI agent on BNB Chain that continuously discovers new meme tokens, analyzes their risk using **real on-chain data**, identifies promising tokens ("golden dogs"), and executes trades automatically via a managed wallet.
 
-### 2.1 职责划分
-
-| 组件 | 职责 | 技术栈 |
-|------|------|--------|
-| **Server** | 链上数据抓取、数据库存储、提供 API | Go + PostgreSQL |
-| **OpenClaw** | AI 分析、金狗识别、自动交易、用户互动学习 | TypeScript + OpenClaw SDK |
-| **Web** | 首页自部署指南、金狗列表、AI 交易历史 | Next.js |
-
-### 2.2 数据流
-
-```
-1. Server 定时抓取 BSC 链上新代币数据 → 存入 DB
-                    ↓
-2. OpenClaw Agent 定时从 Server API 获取待分析代币
-                    ↓
-3. OpenClaw 用 AI 分析风险，判断是否"金狗"，计算时效因子
-                    ↓
-4. OpenClaw 将分析结果回写到 Server API
-                    ↓
-5. 如符合自动交易条件，OpenClaw 使用托管钱包执行交易
-                    ↓
-6. Web 从 Server 获取金狗列表和 AI 交易历史展示
-                    ↓
-7. 用户如需手动交易，跳转 GMGN/DEXTools
-```
+**Core principles:**
+- Golden dogs are time-sensitive — scores decay over time
+- OpenClaw is a learning agent — improves via Memory and user feedback
+- Designed for personal deployment — each user runs their own instance
 
 ---
 
-## 3. Server 规格 (Go)
+## 2. Architecture
 
-### 3.1 职责
-- **数据抓取**: 监听 PancakeSwap PairCreated 事件
-- **数据存储**: PostgreSQL 存储代币信息、分析结果、AI 交易历史
-- **API 服务**: 提供 REST API 供 OpenClaw 和 Web 调用
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Server    │────▶│  OpenClaw   │     │    Web      │
+│   (Go)      │◀────│   Agent     │     │  (Next.js)  │
+└─────────────┘     └─────────────┘     └─────────────┘
+      │                   │                   │
+ Chain data +          AI analysis         Golden dog list
+ GoPlus/DEXScreener    Auto trading        AI trade history
+ PostgreSQL            Memory learning     Deploy guide
+```
 
-### 3.2 API 端点
+| Component | Responsibility | Stack |
+|-----------|---------------|-------|
+| `server/` | Chain data ingestion, **GoPlus/DEXScreener enrichment**, database, REST API, managed wallet | Go + PostgreSQL |
+| `openclaw-skill/` | AI risk analysis, golden dog scoring, auto trading, user feedback learning | TypeScript + OpenClaw SDK |
+| `web/` | Homepage deploy guide, golden dog list, AI trade history | Next.js |
 
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | `/api/tokens/pending` | 获取待分析的代币列表 |
-| GET | `/api/tokens/analyzed` | 获取已分析代币列表 |
-| GET | `/api/tokens/golden-dogs` | 获取金狗列表（含时效信息） |
-| GET | `/api/tokens/:address` | 获取单个代币详情 |
-| POST | `/api/tokens/:address/analysis` | 回写分析结果 |
-| POST | `/api/feedback` | 接收用户反馈（via OpenClaw/Telegram） |
-| GET | `/api/ai-trades` | 获取 AI 交易历史 |
-| GET | `/api/ai-trades/stats` | AI 交易统计（胜率、盈亏） |
-| POST | `/api/wallet/create` | 创建托管钱包 |
-| GET | `/api/wallet/balance` | 查询托管钱包余额 |
-| POST | `/api/wallet/withdraw` | 从托管钱包提取 |
-| POST | `/api/wallet/config` | 配置自动交易参数 |
+---
 
-### 3.3 数据模型
+## 3. Server (Go) — CRITICAL CHANGES NEEDED
 
-**Token (代币)**
+### 3.1 Data Enrichment Pipeline (NEW — P0)
+
+**Problem:** Scanner currently only captures `address`, `name`, `symbol`, `initialLiquidity`. Fields like `creatorAddress`, `buyTax`, `sellTax`, `isHoneypot` are **never populated**. The AI has no real data to analyze.
+
+**Solution:** After a new token is detected via PairCreated, the Server must enrich it with external API data before marking it as ready for analysis.
+
+```
+PairCreated event detected
+        ↓
+scanner.go saves basic token info (existing)
+        ↓
+NEW: enrichment goroutine kicks in
+        ↓
+Step 1: Call GoPlus Security API (FREE, no key needed)
+  GET https://api.gopluslabs.io/api/v1/token_security/56?contract_addresses={ADDRESS}
+  → Write results to Token fields:
+    - IsHoneypot    ← response.is_honeypot
+    - BuyTax        ← response.buy_tax (string→float64, e.g. "0.05" = 5%)
+    - SellTax       ← response.sell_tax
+    - CreatorAddress ← response.creator_address
+    - RiskDetails   ← full GoPlus JSON response (store as-is)
+        ↓
+Step 2: Call DEXScreener API (FREE, no key needed)
+  GET https://api.dexscreener.com/latest/dex/pairs/bsc/{PAIR_ADDRESS}
+  → Write to a new JSON field or separate table:
+    - price, priceChange (5m/1h/6h/24h)
+    - volume (5m/1h/6h/24h)
+    - txns (buys + sells count)
+    - liquidity.usd
+        ↓
+Step 3: Set AnalysisStatus = "enriched" (new status between "pending" and "analyzed")
+        ↓
+OpenClaw fetches "enriched" tokens instead of "pending" tokens
+```
+
+#### GoPlus API Response (key fields to extract)
+
+```go
+// File: server/internal/service/goplus.go (NEW FILE)
+
+type GoPlusResponse struct {
+    IsHoneypot          string `json:"is_honeypot"`           // "0" or "1"
+    BuyTax              string `json:"buy_tax"`               // e.g. "0.05"
+    SellTax             string `json:"sell_tax"`              // e.g. "0.10"
+    IsMintable          string `json:"is_mintable"`           // "0" or "1"
+    CanTakeBackOwnership string `json:"can_take_back_ownership"` // "0" or "1"
+    IsProxy             string `json:"is_proxy"`              // "0" or "1"
+    IsOpenSource        string `json:"is_open_source"`        // "0" or "1"
+    HolderCount         string `json:"holder_count"`          // e.g. "150"
+    LpHolderCount       string `json:"lp_holder_count"`       // e.g. "5"
+    CreatorAddress      string `json:"creator_address"`
+    OwnerAddress        string `json:"owner_address"`
+    TotalSupply         string `json:"total_supply"`
+    // Store entire response in RiskDetails JSON field
+}
+```
+
+**API call example:**
+```go
+func (s *Scanner) enrichWithGoPlus(ctx context.Context, tokenAddress string) (*GoPlusResponse, error) {
+    url := fmt.Sprintf("https://api.gopluslabs.io/api/v1/token_security/56?contract_addresses=%s", tokenAddress)
+    resp, err := http.Get(url)
+    // Parse response.result[tokenAddress]
+    // No API key needed, free tier is sufficient
+    // Rate limit: ~30 requests/minute, add 2-second delay between calls
+}
+```
+
+#### DEXScreener API Response (key fields)
+
+```go
+// File: server/internal/service/dexscreener.go (NEW FILE)
+
+type DEXScreenerPair struct {
+    PriceUsd      string            `json:"priceUsd"`
+    PriceChange   map[string]float64 `json:"priceChange"`   // m5, h1, h6, h24
+    Volume        map[string]float64 `json:"volume"`         // m5, h1, h6, h24
+    Txns          struct {
+        M5  TxnCount `json:"m5"`
+        H1  TxnCount `json:"h1"`
+        H24 TxnCount `json:"h24"`
+    } `json:"txns"`
+    Liquidity     struct {
+        Usd float64 `json:"usd"`
+    } `json:"liquidity"`
+}
+
+type TxnCount struct {
+    Buys  int `json:"buys"`
+    Sells int `json:"sells"`
+}
+```
+
+**API call:**
+```go
+func (s *Scanner) enrichWithDEXScreener(ctx context.Context, pairAddress string) (*DEXScreenerPair, error) {
+    url := fmt.Sprintf("https://api.dexscreener.com/latest/dex/pairs/bsc/%s", pairAddress)
+    // No API key needed
+    // Rate limit: 300 requests/minute
+}
+```
+
+### 3.2 Token Model Updates
+
 ```go
 type Token struct {
-    Address          string    // 合约地址
-    Name             string    
-    Symbol           string    
-    PairAddress      string    // 交易对地址
-    Liquidity        float64   // 流动性 (BNB)
-    CreatorAddress   string    
+    // Existing fields (keep as-is)
+    ID               string
+    Address          string
+    Name             string
+    Symbol           string
+    Decimals         int
+    PairAddress      string
+    Dex              string
+    InitialLiquidity decimal.Decimal
+
+    // Analysis status: "pending" → "enriched" → "analyzed"
+    AnalysisStatus   string
+
+    // GoPlus enrichment (P0 — MUST populate these)
+    IsHoneypot       bool            // ← GoPlus is_honeypot
+    BuyTax           float64         // ← GoPlus buy_tax
+    SellTax          float64         // ← GoPlus sell_tax
+    CreatorAddress   string          // ← GoPlus creator_address
+    RiskDetails      datatypes.JSON  // ← Full GoPlus JSON response
+
+    // DEXScreener enrichment (P1)
+    MarketData       datatypes.JSON  // NEW: DEXScreener price/volume/txns JSON
+
+    // AI analysis result (written by OpenClaw)
+    RiskScore        int
+    RiskLevel        string
+    AnalysisResult   datatypes.JSON
+    IsGoldenDog      bool
+    GoldenDogScore   int
+    AnalyzedAt       *time.Time
+
     CreatedAt        time.Time
-    
-    // 分析结果 (由 OpenClaw 回写)
-    AnalysisStatus   string    // pending | analyzed
-    RiskScore        int       // 0-100
-    RiskLevel        string    // SAFE | WARNING | DANGER
-    IsGoldenDog      bool      // 是否金狗
-    GoldenDogScore   int       // 金狗基础分数 0-100
-    AnalysisResult   JSON      // 详细分析报告
-    AnalyzedAt       time.Time
-}
-
-// 时效性计算方法
-func (t *Token) GoldenDogPhase() string  // EARLY | PEAK | DECLINING | EXPIRED
-func (t *Token) TimeDecayFactor() float64 // 0.0-1.0
-func (t *Token) EffectiveScore() int      // GoldenDogScore × TimeDecayFactor
-```
-
-**AITrade (AI 交易记录)**
-```go
-type AITrade struct {
-    ID              string
-    TokenAddress    string
-    TokenSymbol     string
-    Type            string    // BUY | SELL
-    AmountIn        string    // BNB
-    AmountOut       string    // Token
-    TxHash          string
-    Timestamp       time.Time
-    
-    // AI 决策记录
-    GoldenDogScore  int
-    DecisionReason  string
-    StrategyUsed    string
-    
-    // 结果追踪
-    CurrentValue    string    // 当前价值
-    ProfitLoss      float64   // 盈亏 %
+    UpdatedAt        time.Time
 }
 ```
 
-**ManagedWallet (托管钱包)**
-```go
-type ManagedWallet struct {
-    ID              string
-    UserID          string
-    Address         string
-    EncryptedKey    []byte    // AES-256-GCM 加密
-    MaxBalance      float64   // 最大余额限制，默认 5 BNB
-    CreatedAt       time.Time
-}
-```
+### 3.3 API Endpoints
 
-### 3.4 动态金狗时效规则
+| Method | Path | Description | Status |
+|--------|------|-------------|--------|
+| GET | `/api/tokens/pending` | Tokens pending enrichment + analysis | EXISTS |
+| GET | `/api/tokens/analyzed` | Analyzed tokens list | EXISTS |
+| GET | `/api/tokens/golden-dogs` | Golden dogs with time decay info | EXISTS |
+| GET | `/api/tokens/:address` | Single token detail | EXISTS |
+| POST | `/api/tokens/:address/analysis` | Write back AI analysis (requires `X-API-Key`) | EXISTS |
+| GET | `/api/ai-trades` | AI trade history | EXISTS |
+| GET | `/api/ai-trades/stats` | AI trade statistics | EXISTS |
+| POST | `/api/wallet/create` | Create managed wallet | EXISTS |
+| GET | `/api/wallet/balance` | Query managed wallet balance | EXISTS |
+| POST | `/api/wallet/config` | Configure auto-trade parameters | EXISTS |
+| POST | `/api/feedback` | User feedback (via OpenClaw/Telegram) | EXISTS |
 
-| 阶段 | 时间范围 | 时效因子 | 说明 |
-|------|---------|---------|------|
-| EARLY | 0-30分钟 | 1.0 | 刚发现，最佳时机 |
-| PEAK | 30分钟-2小时 | 0.8-1.0 | 热度上升期 |
-| DECLINING | 2-6小时 | 0.5-0.8 | 热度下降 |
-| EXPIRED | >6小时 | <0.5 | 不再推荐 |
+### 3.4 Updated `/api/tokens/pending` Response
 
-### 3.5 安全与校验
+The pending tokens endpoint should return **enriched** data so the OpenClaw agent has real data to analyze:
 
-- **CORS**: 只允许配置的来源，不能使用 `*` + `AllowCredentials`
-- **API Key**: `POST /api/tokens/:address/analysis` 必须校验 `X-API-Key`
-- **输入校验**: `riskScore` 必须 0-100，`riskLevel` 只能是 SAFE/WARNING/DANGER
-- **托管钱包**: 私钥 AES-256-GCM 加密存储，单钱包最大余额 5 BNB
-
----
-
-## 4. OpenClaw Agent 规格
-
-### 4.1 核心定位
-
-> **OpenClaw 做 AI 分析 + 自动交易 + 用户互动学习**
-
-OpenClaw 的职责：
-- 分析代币是否"金狗"
-- 识别风险模式并记忆
-- 使用托管钱包自动交易
-- 通过 OpenClaw Dialog / Telegram 与用户互动学习
-
-### 4.2 工作流程
-
-```
-┌─────────────────────────────────────────────────────┐
-│                 OpenClaw Agent                       │
-├─────────────────────────────────────────────────────┤
-│                                                      │
-│   1. Cron 触发 (每 5 分钟)                           │
-│            ↓                                         │
-│   2. 调用 Server API 获取待分析代币                  │
-│            ↓                                         │
-│   3. AI 分析每个代币 (使用 LLM)                      │
-│      - 评估风险因素                                  │
-│      - 判断是否金狗                                  │
-│      - 计算金狗分数                                  │
-│            ↓                                         │
-│   4. 将分析结果回写 Server API                       │
-│            ↓                                         │
-│   5. 如 effectiveScore >= 阈值，执行自动买入         │
-│            ↓                                         │
-│   6. 更新 Memory (记住风险模式和交易结果)            │
-│                                                      │
-└─────────────────────────────────────────────────────┘
-```
-
-### 4.3 Tool 定义
-
-**已有 Tools:**
-- `fetchPendingTokens` - 获取待分析代币
-- `analyzeTokenRisk` - AI 分析代币风险
-- `submitAnalysis` - 回写分析结果
-
-**新增 Tools:**
-
-```typescript
-// 执行自动交易
-interface ExecuteTradeInput {
-  tokenAddress: string;
-  type: 'BUY' | 'SELL';
-  amountBNB: number;
-  reason: string;
-}
-
-// 记录代币实际表现
-interface RecordOutcomeInput {
-  tokenAddress: string;
-  outcome: 'MOON' | 'RUG' | 'FLAT';
-  maxGain: number;
-  maxLoss: number;
-  lessonsLearned: string;
-}
-
-// 更新识别规则
-interface UpdateRuleInput {
-  ruleId: string;
-  condition: string;
-  weight: number;
-  source: 'LEARNED' | 'USER_FEEDBACK';
-}
-
-// 获取用户反馈
-interface GetUserFeedbackInput {
-  limit?: number;
-}
-```
-
-### 4.4 金狗识别（动态规则）
-
-AI 需要综合判断以下因素，权重可通过学习动态调整：
-
-| 因素 | 金狗特征 | 初始权重 | 可学习 |
-|------|---------|---------|--------|
-| 安全性 | 非貔貅、税率合理、无危险权限 | 必要条件 | ❌ |
-| 流动性 | LP 充足且锁定 | 高 | ✅ |
-| 持仓分布 | 不集中在少数地址 | 中 | ✅ |
-| 创建者历史 | 无 rug 历史 | 高 | ✅ |
-| 社区热度 | 有社交媒体关注 | 加分项 | ✅ |
-
-**金狗 ≠ 安全**
-
-金狗是指"值得关注、可能有机会"的代币，需要 AI 做综合判断。
-
-### 4.5 Memory 结构
-
-```typescript
-interface LongTermMemory {
-  // 风险模式库
-  riskPatterns: RiskPattern[];
-  
-  // 成功/失败案例库
-  successCases: TokenOutcome[];
-  failureCases: TokenOutcome[];
-  
-  // 动态识别规则
-  goldenDogRules: DynamicRule[];
-  
-  // 用户信誉
-  userReputations: UserReputation[];
-}
-
-interface DynamicRule {
-  id: string;
-  condition: string;
-  weight: number;           // -1 到 1
-  source: 'INITIAL' | 'LEARNED' | 'USER_FEEDBACK';
-  performance: number;      // 规则历史准确率
-}
-```
-
-### 4.6 用户互动学习
-
-> **互动渠道：OpenClaw Dialog / Telegram，不在 Web 前端**
-
-**反馈机制：**
-```typescript
-interface UserFeedback {
-  tokenAddress: string;
-  feedbackType: 'CONFIRM_GOLDEN' | 'DENY_GOLDEN' | 'REPORT_RUG';
-  userId: string;           // OpenClaw 用户ID 或 Telegram ID
-  channel: 'OPENCLAW_DIALOG' | 'TELEGRAM';
-  userReputation: number;   // 用户信誉分 0-100
-  feedbackWeight: number;   // 实际权重 = reputation / 100
-}
-```
-
-**防投毒机制：**
-- 新用户（<10次反馈）：权重 = 0.3
-- 普通用户：权重 = reputationScore
-- 高信誉用户（accuracy > 80%）：权重 = 1.0 + bonus
-- 连续错误 ≥3 次：静默，权重 = 0
-
-### 4.7 自动交易策略（可配置）
-
-```typescript
-interface AutoTradeConfig {
-  // 买入策略
-  enabled: boolean;
-  maxAmountPerTrade: number;    // BNB，默认 0.1
-  minGoldenDogScore: number;    // 触发阈值，默认 75
-  dailyBudget: number;          // 每日预算，默认 1 BNB
-  confirmThreshold: number;     // 超过此金额需确认，默认 0.5 BNB
-  
-  // 卖出策略
-  takeProfitLevels: number[];   // [0.5, 1.0, 2.0] 即 50%, 100%, 200%
-  takeProfitAmounts: number[];  // [0.3, 0.3, 0.4] 每级卖出比例
-  stopLoss: number;             // -0.3 即 -30%
-  
-  // 风控
-  maxDailyLoss: number;         // 单日最大亏损，默认 2 BNB
-  blacklistedCreators: string[];
-}
-```
-
-### 4.8 学习回路示例（简化）
-
-**1) 估分输入（analysis 前）**
 ```json
 {
-  "riskScore": 78,
-  "isGoldenDog": true,
-  "riskFactors": {
-    "honeypotRisk": "LOW",
-    "taxRisk": "MEDIUM",
-    "ownerRisk": "LOW",
-    "concentrationRisk": "MEDIUM"
-  }
+  "data": [
+    {
+      "address": "0x1234...",
+      "name": "MoonDog",
+      "symbol": "MDOG",
+      "liquidity": 5.2,
+      "pairAddress": "0xabcd...",
+      "creatorAddress": "0x5678...",
+      "createdAt": "2026-02-10T12:00:00Z",
+
+      "goplus": {
+        "is_honeypot": false,
+        "buy_tax": 0.03,
+        "sell_tax": 0.05,
+        "is_mintable": false,
+        "is_open_source": true,
+        "holder_count": 150,
+        "lp_holder_count": 3,
+        "owner_address": "0x0000..."
+      },
+
+      "dexscreener": {
+        "priceUsd": "0.00001234",
+        "priceChange": { "m5": 12.5, "h1": 45.0, "h6": -5.0 },
+        "volume": { "h1": 1500, "h24": 8000 },
+        "txns": { "h1": { "buys": 25, "sells": 8 } },
+        "liquidity": { "usd": 15000 }
+      }
+    }
+  ]
 }
 ```
 
-**2) 结果回写（trade outcome 后）**
-```json
-{
-  "tokenAddress": "0xabc...",
-  "outcome": "MOON",
-  "maxGain": 1.6,
-  "maxLoss": -0.1,
-  "analysis": {
-    "isGoldenDog": true
+### 3.5 Security
+
+- **CORS**: Only configured origins, never `*` with credentials
+- **API Key**: POST analysis endpoint requires `X-API-Key` header
+- **Input validation**: `riskScore` must be 0-100, `riskLevel` must be SAFE/WARNING/DANGER
+- **Managed wallet**: Private key AES-256-GCM encrypted, max balance 5 BNB per wallet
+
+---
+
+## 4. OpenClaw Agent
+
+### 4.1 Role
+
+OpenClaw performs AI analysis, auto trading, and learning. It does NOT do data fetching — that's the Server's job.
+
+### 4.2 Workflow (Updated)
+
+```
+1. Cron triggers every 5 minutes
+           ↓
+2. Fetch ENRICHED tokens from Server API (tokens with GoPlus+DEXScreener data)
+           ↓
+3. AI analyzes each token using REAL data:
+   - GoPlus security data → determine safety
+   - DEXScreener market data → assess momentum
+   - Combine into golden dog score
+           ↓
+4. Submit analysis back to Server
+           ↓
+5. If effectiveScore >= threshold, execute auto-buy
+           ↓
+6. Update Memory (risk patterns, trade outcomes)
+```
+
+### 4.3 Existing Tools (Already Implemented)
+
+- `fetchPendingTokens` — Fetch tokens pending analysis
+- `analyzeTokenRisk` — Record AI risk analysis
+- `submitAnalysis` — Submit analysis to server
+- `estimateGoldenDogScore` — Score using learned weights
+- `executeTrade` — Execute trade via managed wallet
+- `recordOutcome` — Record trade outcome, update weights
+- `getWalletInfo` — Get managed wallet info
+- `getPositions` — Get current AI positions
+- `upsertWalletConfig` — Update auto-trade config
+- `recordUserFeedback` — Record user feedback with reputation
+
+### 4.4 Golden Dog Scoring
+
+The `estimateScore()` function uses learned weights:
+
+```
+score = riskScore × baseMultiplier + goldenDogBias - highPenalty × HIGH_count - mediumPenalty × MEDIUM_count
+```
+
+With real GoPlus data, the `riskFactors` (honeypotRisk, taxRisk, ownerRisk, concentrationRisk) will be based on facts instead of LLM guesses.
+
+### 4.5 Time Decay (Already Implemented in `token.go`)
+
+| Phase | Time Range | Decay Factor |
+|-------|-----------|--------------|
+| EARLY | 0-30min | 1.0 |
+| PEAK | 30min-2h | 0.8-1.0 |
+| DECLINING | 2-6h | 0.5-0.8 |
+| EXPIRED | >6h | 0.4 |
+
+### 4.6 Memory & Learning (Already Implemented in `memory.ts`)
+
+- Weights: `baseMultiplier`, `goldenDogBias`, `highPenalty`, `mediumPenalty`
+- Outcomes tracking: MOON / RUG / FLAT
+- User feedback with reputation-based weighting
+- Anti-poisoning: new users weight=0.3, muted users weight=0
+
+### 4.7 Auto-Trade Config (Already Implemented)
+
+Configurable via `upsertWalletConfig` tool and `wallet_configs` table.
+
+---
+
+## 5. Web (Next.js)
+
+### 5.1 Pages
+
+| Page | Function | Priority |
+|------|----------|----------|
+| **Homepage** | Hero deploy guide + GitHub link + quick start | P0 |
+| **Golden Dog List** | AI-identified golden dogs with time phase badges (EARLY/PEAK/DECLINING/EXPIRED) | P0 |
+| **AI Trade History** | Agent auto-trade records with P&L stats | P0 |
+| **Token Detail** | Enriched token report with human-readable golden dog explanation — see §5.3 | **P1** |
+
+### 5.2 Key Design Decisions
+
+- No trading on the website — link to GMGN/DEXTools for manual trading
+- Database stores only AI trades, no human trade tracking
+- User interaction happens via OpenClaw Dialog / Telegram, not web UI
+
+### 5.3 Token Detail Page — Enriched View (P1)
+
+> **Goal: Show enriched indicator data AND explain in plain language WHY a token is (or isn't) a golden dog, so regular users can understand the AI's reasoning at a glance.**
+
+#### 5.3.1 API Change Required
+
+The current `GET /api/tokens/:address/detail` response (`TokenDetailResponse`) must be extended to include the enriched JSON fields that Codex already stores in the Token model. Add these fields to the response struct in `server/internal/handler/token.go`:
+
+```go
+// Add to TokenDetailResponse struct (handler/token.go)
+GoPlus             any `json:"goplus"`
+DEXScreener        any `json:"dexscreener"`
+HolderDistribution any `json:"holderDistribution"`
+CreatorHistory     any `json:"creatorHistory"`
+MarketAlerts       any `json:"marketAlerts"`
+```
+
+Unmarshal from the Token model fields (`RiskDetails` → goplus normalized, `MarketData` → dexscreener, `HolderData`, `CreatorHistory`, `MarketAlerts`) the same way `GetPendingTokens` already does. Reuse the same unmarshalling pattern.
+
+Update `web/lib/api-types.ts` `TokenDetail` type accordingly:
+
+```typescript
+// Add to TokenDetail type (api-types.ts)
+goplus?: Record<string, unknown>;
+dexscreener?: Record<string, unknown>;
+holderDistribution?: Record<string, unknown>;
+creatorHistory?: Record<string, unknown>;
+marketAlerts?: Array<Record<string, unknown>>;
+```
+
+#### 5.3.2 Page Layout — 6 Sections
+
+The token detail page (`web/app/tokens/[address]/page.tsx`) should render these 6 sections from top to bottom. Below is the exact layout, rendering logic, and data source for each.
+
+**Section 1 — Header (exists, keep as-is)**
+
+No change. Keep symbol, name, address, riskLevel badge, CopyButton, lang toggle.
+
+---
+
+**Section 2 — "Why Is This a Golden Dog?" Explanation Card** ⭐ KEY SECTION
+
+This is the most important new section. It must translate the raw data into a human-readable verdict that any user can understand.
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  🐕 Golden Dog Verdict                  Score: 72 / 100   │
+│                                                            │
+│  "This token passes all safety checks, has strong buying   │
+│   momentum (3x more buys than sells), and reasonable       │
+│   holder distribution. Low risk for a small position."     │
+│                                                            │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐  │
+│  │ Safety   │ │ Tax      │ │ Ownership│ │ Momentum     │  │
+│  │ ✅ PASS  │ │ ✅ LOW   │ │ ⚠️ MEDIUM│ │ ✅ STRONG    │  │
+│  │ No honey │ │ B:3%/S:5%│ │ Mintable │ │ Buys>Sells   │  │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────────┘  │
+│                                                            │
+│  isGoldenDog = true                                        │
+└────────────────────────────────────────────────────────────┘
+```
+
+Rendering logic (implement as a client component or inline in the page):
+
+```typescript
+// Derive from token.analysisResult or token.goplus + token.dexscreener
+const riskFactors = token.analysisResult?.riskFactors as {
+  honeypotRisk?: string;
+  taxRisk?: string;
+  ownerRisk?: string;
+  concentrationRisk?: string;
+} | undefined;
+
+// Build 4 indicator cards:
+const indicators = [
+  {
+    label: "Safety",       // i18n: token_indicator_safety
+    level: riskFactors?.honeypotRisk ?? "UNKNOWN",
+    detail: riskFactors?.honeypotRisk === "HIGH"
+      ? "Honeypot detected" : "No honeypot"
+  },
+  {
+    label: "Tax",           // i18n: token_indicator_tax
+    level: riskFactors?.taxRisk ?? "UNKNOWN",
+    detail: `Buy ${formatPct(goplus?.buy_tax)}% / Sell ${formatPct(goplus?.sell_tax)}%`
+  },
+  {
+    label: "Ownership",     // i18n: token_indicator_ownership
+    level: riskFactors?.ownerRisk ?? "UNKNOWN",
+    detail: goplus?.is_mintable ? "Mintable ⚠️" : "Not mintable"
+  },
+  {
+    label: "Momentum",      // i18n: token_indicator_momentum
+    level: getMomentumLevel(dexscreener),
+    detail: `${buysH1} buys / ${sellsH1} sells (1h)`
   }
-}
+];
+
+// Level → color mapping:
+// LOW  → green bg, "PASS" or "LOW"
+// MEDIUM → yellow bg, "MEDIUM"
+// HIGH → red bg, "HIGH" or "FAIL"
+// UNKNOWN → gray bg, "N/A"
 ```
 
-**3) 权重变化方向**
-- `goldenDogBias` 趋于上调
-- `highPenalty` / `mediumPenalty` 趋于下调
+The verdict text (the large quote) should come from `token.analysisResult?.recommendation`. If not available, generate a simple template sentence from the 4 indicators.
 
 ---
 
-## 5. Web 规格 (Next.js)
+**Section 3 — Top Scores Row (exists, keep as-is)**
 
-### 5.1 职责
-
-> **前端两大核心：自部署指南 + AI 交易展示**
-
-- 首页突出自部署指南和 GitHub 链接
-- 展示金狗列表（含时效状态）
-- 展示 AI 交易历史和统计
-- 人类交易跳转 GMGN/DEXTools（不在本站交易）
-
-### 5.2 核心页面
-
-| 页面 | 功能 | 优先级 |
-|------|------|--------|
-| **首页** | Hero 自部署指南 + GitHub 链接 + 快速开始 | P0 |
-| **金狗列表** | AI 识别的金狗列表，时效性标记（EARLY/PEAK/DECLINING/EXPIRED） | P0 |
-| **AI 交易历史** | Agent 自动交易记录，盈亏统计 | P0 |
-| **代币详情** | 单个代币分析报告 + 跳转 GMGN/DEXTools | P1 |
-
-### 5.3 首页 Hero Section
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                                                          │
-│   🐕 EasyMeme - 你的专属 AI Meme 币猎手                    │
-│                                                          │
-│   自动发现、分析、交易 BNB Chain 上的金狗                   │
-│                                                          │
-│   ┌────────────────────┐  ┌─────────────────────┐       │
-│   │  📦 一键部署       │  │  📚 查看文档        │       │
-│   └────────────────────┘  └─────────────────────┘       │
-│                                                          │
-│   ⭐ GitHub: github.com/easyweb3tools/easymeme            │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-```
-
-### 5.4 与 Server 交互
-
-- 只读取数据展示
-- 不提供交易功能（跳转外部）
-- 数据库只存储 AI 交易历史
+Keep the existing 3-column grid: effectiveScore, goldenDogScore, riskScore with phase and timeDecay.
 
 ---
 
-## 6. 部署与运行
+**Section 4 — Contract Safety (GoPlus Data)**
 
-### 6.1 Docker Compose
+Show a grid of safety check results from `token.goplus`. This replaces the current raw JSON dump.
 
-```yaml
-services:
-  postgres:
-    image: postgres:16
-    
-  server:
-    build: ./server
-    depends_on: [postgres]
-    
-  openclaw:
-    build: ./openclaw-skill
-    depends_on: [server]
-    # 需提供 OpenClaw 配置与 API Key
-    
-  web:
-    build: ./web
-    depends_on: [server]
+```
+┌─────────────────────────────────────────────────┐
+│  🔒 Contract Safety (GoPlus)                    │
+│                                                  │
+│  ✅ Honeypot: No      ✅ Open Source: Yes        │
+│  ✅ Mintable: No      ✅ Proxy: No               │
+│  ✅ Owner Renounced   ❌ Can Blacklist: Yes       │
+│                                                  │
+│  Holders: 150    LP Holders: 3                   │
+│  Creator: 0xabc...def                            │
+└─────────────────────────────────────────────────┘
 ```
 
-### 6.2 环境变量
+Data source: `token.goplus` (or `token.riskDetails.normalized`). Fields to display:
 
-**Server:**
-```bash
-DATABASE_URL=postgres://...
-BSCSCAN_API_KEY=xxx
-BSC_RPC_HTTP=https://bsc-dataseed.bnbchain.org
-BSC_RPC_WS=wss://...
-EASYMEME_API_KEY=xxx
-CORS_ALLOWED_ORIGINS=http://localhost:3000
-WALLET_MASTER_KEY=xxx  # 托管钱包加密密钥
-```
-
-**OpenClaw:**
-```bash
-EASYMEME_SERVER_URL=http://server:8080
-EASYMEME_API_KEY=xxx
-GEMINI_API_KEY=xxx
-# openclaw.json: agents.defaults.model.primary = "google/gemini-3-flash"
-```
-
-**Web:**
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:8080
-NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
-```
+| GoPlus field | Display label | Icon logic |
+|---|---|---|
+| `is_honeypot` | Honeypot | `false` → ✅, `true` → ❌ |
+| `is_open_source` | Open Source | `true` → ✅, `false` → ⚠️ |
+| `is_mintable` | Mintable | `false` → ✅, `true` → ❌ |
+| `is_proxy` | Proxy Contract | `false` → ✅, `true` → ⚠️ |
+| `can_take_back_ownership` | Owner Can Reclaim | `false` → ✅, `true` → ❌ |
+| `holder_count` | Holders | plain number |
+| `lp_holder_count` | LP Holders | plain number |
+| `creator_address` | Creator | truncated address + CopyButton |
 
 ---
 
-## 7. 交付验收标准
+**Section 5 — Market Data (DEXScreener)**
 
-### Phase 1 - 核心价值（P0）
+Show real-time market data from `token.dexscreener`.
 
-**Server:**
-- [ ] 抓取 PancakeSwap 新池数据
-- [ ] 存储代币信息到 PostgreSQL
-- [ ] `/api/tokens/pending` 接口
-- [ ] `/api/tokens/analyzed` 接口
-- [ ] `/api/tokens/golden-dogs` 接口（含时效信息）
-- [ ] `/api/tokens/:address/analysis` 接口（校验 API Key）
+```
+┌─────────────────────────────────────────────────┐
+│  📊 Market Data (DEXScreener)                   │
+│                                                  │
+│  Price: $0.00001234                              │
+│                                                  │
+│  Price Change:  1h: +45% ↑  6h: -5% ↓  24h: +120% ↑  │
+│                                                  │
+│  Volume (1h): $1,500      Liquidity: $15,000     │
+│                                                  │
+│  Transactions (1h):                              │
+│  ██████████████████ 25 buys                      │
+│  ██████           8 sells                        │
+└─────────────────────────────────────────────────┘
+```
 
-**OpenClaw:**
-- [ ] `fetchPendingTokens` Tool
-- [ ] `analyzeTokenRisk` Tool（包含金狗分数）
-- [ ] `submitAnalysis` Tool
-- [ ] Cron 每 5 分钟自动运行
+Fields to display:
 
-**Web:**
-- [ ] 首页 Hero + 自部署指南 + GitHub 链接
-- [ ] 金狗列表页（含时效状态）
-- [ ] 代币详情页（跳转 GMGN/DEXTools）
+| DEXScreener field | Display | Format |
+|---|---|---|
+| `priceUsd` | Price | `$` + number |
+| `priceChange.h1` / `h6` / `h24` | Price Change 1h/6h/24h | `+XX%` green or `-XX%` red |
+| `volume.h1` | Volume (1h) | `$X,XXX` |
+| `liquidity.usd` | Liquidity | `$X,XXX` |
+| `txns.h1.buys` / `txns.h1.sells` | Buy/Sell bar | horizontal stacked bar, green=buys, red=sells |
 
-### Phase 2 - AI 自动化（P1）
-
-**Server:**
-- [ ] 托管钱包创建 `/api/wallet/create`
-- [ ] 托管钱包余额 `/api/wallet/balance`
-- [ ] AI 交易历史 `/api/ai-trades`
-- [ ] AI 交易统计 `/api/ai-trades/stats`
-
-**OpenClaw:**
-- [ ] `executeTrade` Tool（使用托管钱包）
-- [ ] `recordOutcome` Tool（记录代币表现）
-- [ ] Memory 持久化（风险模式、成功/失败案例）
-- [ ] 自动止盈止损
-
-**Web:**
-- [ ] AI 交易历史页面
-- [ ] AI 交易统计面板
-
-### Phase 3 - 学习增强（P2）
-
-**OpenClaw:**
-- [ ] `getUserFeedback` Tool
-- [ ] `updateRule` Tool
-- [ ] 用户信誉系统（防投毒）
-- [ ] 动态规则权重调整
+If `token.dexscreener` is null/empty, show "Market data not yet available" placeholder.
 
 ---
 
-*文档结束 - Codex 请按此规格开发*
+**Section 6 — Holder Distribution**
+
+Show from `token.holderDistribution` if available.
+
+```
+┌─────────────────────────────────────────────────┐
+│  👥 Holder Distribution                         │
+│                                                  │
+│  Top 10 holders: 35%                             │
+│  ████████████░░░░░░░░░░░░░░░░░░░░  35% / 65%   │
+│                                                  │
+│  Total tracked holders: 50                       │
+└─────────────────────────────────────────────────┘
+```
+
+| Field | Display |
+|---|---|
+| `top10Share` | percentage + horizontal bar (green if <60%, yellow if 60-80%, red if >80%) |
+| `total` | total holders count |
+
+If `token.holderDistribution` is null/empty, show "Holder data not yet available".
+
+---
+
+**Section 7 — Market Alerts (optional, only show if alerts exist)**
+
+If `token.marketAlerts` array is non-empty, show alert cards:
+
+```
+┌─────────────────────────────────────────────────┐
+│  ⚠️ Market Alerts                               │
+│                                                  │
+│  🔴 LIQUIDITY_DROP — Liquidity dropped 45%       │
+│     2026-02-10 22:15 UTC                         │
+└─────────────────────────────────────────────────┘
+```
+
+Each alert has `type`, `severity`, `change`, `timestamp`. Use red bg for HIGH severity, yellow for MEDIUM.
+
+---
+
+**Keep existing sections:** Basic Info + External Tools links + Raw Analysis JSON (move to bottom, collapse by default).
+
+#### 5.3.3 Styling Requirements
+
+- Dark theme consistent with existing pages (dark bg `#0a0a0f`, white/opacity text)
+- Glass-morphism cards (`bg-white/5 border-white/10 rounded-2xl`)
+- Green (#7cf2a4) for positive / LOW risk, yellow (#ffbf5c) for MEDIUM, red (#f07d7d) for HIGH / negative
+- The "Golden Dog Verdict" card should have a subtle green glow border when `isGoldenDog === true`, or a neutral gray border otherwise
+- Responsive: 1 column on mobile, 2 columns on md+ for grid sections
+- i18n: Add all new display strings to the i18n system (both `zh` and `en`)
+
+#### 5.3.4 New Components to Create
+
+| Component | File | Purpose |
+|---|---|---|
+| `GoldenDogVerdict` | `web/components/golden-dog-verdict.tsx` | Section 2 — verdict card with 4 indicators |
+| `ContractSafety` | `web/components/contract-safety.tsx` | Section 4 — GoPlus safety grid |
+| `MarketDataPanel` | `web/components/market-data-panel.tsx` | Section 5 — DEXScreener data |
+| `HolderDistribution` | `web/components/holder-distribution.tsx` | Section 6 — holder bar |
+| `MarketAlerts` | `web/components/market-alerts.tsx` | Section 7 — alert cards |
+
+All components should accept their respective data as props (not fetch from API themselves). The page component fetches once and passes data down.
+
+---
+
+## 6. Deployment
+
+Docker Compose with: `db` (postgres:16), `server`, `web`, `openclaw-gateway`, `nginx`.
+
+See `docker-compose.yml` and `scripts/run-docker-compose.sh` for configuration.
+
+---
+
+## 7. Development Priorities
+
+### Iteration 1 — Data Foundation (P0) ✅ DONE
+
+> **Goal: Give the AI real data to work with instead of guessing**
+
+**Server changes:**
+- [x] Create `server/internal/service/goplus.go` — GoPlus Security API client
+- [x] Create `server/internal/service/dexscreener.go` — DEXScreener API client
+- [x] Update `scanner.go` — After saving a new token, call GoPlus + DEXScreener to enrich it
+- [x] Add `MarketData` JSON field to Token model for DEXScreener data
+- [x] Populate `CreatorAddress`, `BuyTax`, `SellTax`, `IsHoneypot` from GoPlus response
+- [x] Store full GoPlus response in `RiskDetails` JSON field
+- [x] Add new `AnalysisStatus` value: `"enriched"` (between `"pending"` and `"analyzed"`)
+- [x] Update `/api/tokens/pending` to return GoPlus + DEXScreener data in response
+- [x] Add rate limiting: 2s delay between GoPlus calls, respect DEXScreener limits
+
+**OpenClaw changes:**
+- [x] Update SKILL.md prompt to instruct AI to use GoPlus/DEXScreener data from the pending tokens response
+- [x] Update `fetchPendingTokens` tool description to document new enriched fields
+- [x] AI should map GoPlus `is_honeypot`→`honeypotRisk`, `buy_tax`/`sell_tax`→`taxRisk`, etc.
+
+### Iteration 2 — Market Intelligence (P1) ✅ DONE
+
+- [x] Periodic DEXScreener refresh (every 5 min for tokens < 6h old)
+- [x] Track liquidity changes over time (detect rug pulls)
+- [x] Add holder distribution data via BSCScan `tokenholderlist` API
+- [x] Creator history lookup via BSCScan
+
+### Iteration 3 — Learning Enhancement (P2) ✅ DONE (basic)
+
+- [x] More granular rule performance tracking (`updateFactorPerformanceOnOutcome`)
+- [x] Performance windows (7d/30d/all) via `buildPerformanceWindows`
+- [ ] Social signal integration (future — fields pre-created)
+- [ ] Smart money wallet tracking (future — fields pre-created)
+
+### Iteration 4 — Token Detail Page Enhancement (P1, CURRENT)
+
+> **Goal: Make the frontend token detail page show enriched data AND explain golden dog reasoning in plain language for regular users.**
+
+**Server changes:**
+- [ ] Extend `TokenDetailResponse` in `handler/token.go` to include `goplus`, `dexscreener`, `holderDistribution`, `creatorHistory`, `marketAlerts` fields — same unmarshalling as `GetPendingTokens`
+- [ ] Add i18n strings for all new labels (both `zh` and `en`)
+
+**Web changes:**
+- [ ] Update `TokenDetail` type in `web/lib/api-types.ts` with new fields
+- [ ] Create `web/components/golden-dog-verdict.tsx` — Verdict card with 4 risk factor indicators + plain-language explanation
+- [ ] Create `web/components/contract-safety.tsx` — GoPlus safety check grid (✅/❌ icons)
+- [ ] Create `web/components/market-data-panel.tsx` — DEXScreener price/volume/txns with colored percentages + buy/sell bar
+- [ ] Create `web/components/holder-distribution.tsx` — Top-10 share bar + holder count
+- [ ] Create `web/components/market-alerts.tsx` — Alert cards for liquidity drops etc.
+- [ ] Update `web/app/tokens/[address]/page.tsx` to render all new sections in correct order
+- [ ] Collapse raw JSON section by default (add expand/collapse toggle)
+- [ ] Responsive layout: 1 column mobile, 2-column grid on md+
+- [ ] All new text strings support i18n (zh + en)
+
+---
+
+*End of spec — Codex: work on Iteration 4 items above*

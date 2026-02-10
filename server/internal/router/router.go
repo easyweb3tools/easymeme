@@ -26,6 +26,7 @@ func Setup(
 	walletHandler *handler.WalletHandler,
 	aiTradeHandler *handler.AITradeHandler,
 	wsHub *handler.WebSocketHub,
+	healthReporter interface{ HealthStatus() map[string]interface{} },
 ) *gin.Engine {
 	r := gin.Default()
 
@@ -37,7 +38,11 @@ func Setup(
 	}))
 
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
+		data := gin.H{"status": "ok"}
+		if healthReporter != nil {
+			data["scanner"] = healthReporter.HealthStatus()
+		}
+		c.JSON(200, data)
 	})
 
 	api := r.Group("/api")

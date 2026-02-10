@@ -24,7 +24,16 @@ func New(databaseURL string) (*Repository, error) {
 	}
 
 	if os.Getenv("AUTO_MIGRATE") == "true" {
-		db.AutoMigrate(&model.Token{}, &model.Trade{}, &model.ManagedWallet{}, &model.WalletConfig{}, &model.AITrade{}, &model.AIPosition{})
+		db.AutoMigrate(
+			&model.Token{},
+			&model.Trade{},
+			&model.ManagedWallet{},
+			&model.WalletConfig{},
+			&model.AITrade{},
+			&model.AIPosition{},
+			&model.TokenMarketSnapshot{},
+			&model.TokenAlert{},
+		)
 	}
 
 	return &Repository{db: db}, nil
@@ -55,7 +64,7 @@ func (r *Repository) GetLatestTokens(ctx context.Context, limit int) ([]model.To
 func (r *Repository) GetPendingTokens(ctx context.Context, limit int, minLiquidity float64) ([]model.Token, error) {
 	var tokens []model.Token
 	query := r.db.WithContext(ctx).
-		Where("analysis_status = ? OR analysis_status IS NULL", "pending").
+		Where("analysis_status = ?", "enriched").
 		Order("created_at DESC").
 		Limit(limit)
 	if minLiquidity > 0 {
@@ -95,6 +104,57 @@ func (r *Repository) UpdateTokenAnalysis(ctx context.Context, address string, up
 		Model(&model.Token{}).
 		Where("address = ?", address).
 		Updates(updates).Error
+}
+
+func (r *Repository) GetTokensByStatus(ctx context.Context, status string, limit int) ([]model.Token, error) {
+	var tokens []model.Token
+	err := r.db.WithContext(ctx).
+		Where("analysis_status = ?", status).
+		Order("updated_at ASC").
+		Limit(limit).
+		Find(&tokens).Error
+	return tokens, err
+}
+
+func (r *Repository) GetStaleEnrichingTokens(ctx context.Context, staleBefore time.Time, limit int) ([]model.Token, error) {
+	var tokens []model.Token
+	err := r.db.WithContext(ctx).
+		Where("analysis_status = ?", "enriching").
+		Where("updated_at <= ?", staleBefore).
+		Order("updated_at ASC").
+		Limit(limit).
+		Find(&tokens).Error
+	return tokens, err
+}
+
+func (r *Repository) GetTokensForMarketRefresh(ctx context.Context, freshBefore time.Time, since time.Time, limit int) ([]model.Token, error) {
+	var tokens []model.Token
+	err := r.db.WithContext(ctx).
+		Where("created_at >= ?", since).
+		Where("analysis_status IN ?", []string{"enriched", "analyzed"}).
+		Where("last_market_refresh_at IS NULL OR last_market_refresh_at <= ?", freshBefore).
+		Order("COALESCE(last_market_refresh_at, created_at) ASC").
+		Limit(limit).
+		Find(&tokens).Error
+	return tokens, err
+}
+
+func (r *Repository) CreateMarketSnapshot(ctx context.Context, snapshot *model.TokenMarketSnapshot) error {
+	return r.db.WithContext(ctx).Create(snapshot).Error
+}
+
+func (r *Repository) GetLatestMarketSnapshots(ctx context.Context, tokenAddress string, limit int) ([]model.TokenMarketSnapshot, error) {
+	var snapshots []model.TokenMarketSnapshot
+	err := r.db.WithContext(ctx).
+		Where("token_address = ?", tokenAddress).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&snapshots).Error
+	return snapshots, err
+}
+
+func (r *Repository) CreateTokenAlert(ctx context.Context, alert *model.TokenAlert) error {
+	return r.db.WithContext(ctx).Create(alert).Error
 }
 
 func (r *Repository) TokenExists(ctx context.Context, address string) bool {
