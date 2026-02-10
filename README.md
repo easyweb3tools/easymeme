@@ -18,10 +18,8 @@
 
 ## 🎬 Demo
 
-![Demo](./demo/recording.gif)
-<video src="./demo/demo.mp4" controls width="720"></video>
+[▶️ 查看演示视频 (demo.mp4)](./demo/demo.mp4)
 
-Agent 自动：发现新代币 → AI 分析风险 → 识别金狗 → 自动交易
 
 **最新自动交易实测（已跑通）**
 
