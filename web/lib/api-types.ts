@@ -51,6 +51,11 @@ export type TokenDetail = {
   phase: 'EARLY' | 'PEAK' | 'DECLINING' | 'EXPIRED';
   riskDetails?: Record<string, unknown>;
   analysisResult?: Record<string, unknown>;
+  goplus?: Record<string, unknown>;
+  dexscreener?: Record<string, unknown>;
+  holderDistribution?: Record<string, unknown>;
+  creatorHistory?: Record<string, unknown>;
+  marketAlerts?: Array<Record<string, unknown>>;
 };
 
 export type AITrade = {
