@@ -2,7 +2,7 @@
 
 > 自动发现、分析、交易 BNB Chain 上的金狗
 
-**开源地址**: https://github.com/easyweb3tools/easymeme
+**官网**: https://meme.easyweb3.tools/
 
 ---
 
@@ -18,9 +18,8 @@
 
 ## 🎬 Demo
 
-![Demo](./demo/recording.gif)
+[![Demo Video](https://img.youtube.com/vi/pRXXaUhgaRE/hqdefault.jpg)](https://youtube.com/shorts/pRXXaUhgaRE?feature=share)
 
-Agent 自动：发现新代币 → AI 分析风险 → 识别金狗 → 自动交易
 
 **最新自动交易实测（已跑通）**
 
@@ -32,8 +31,11 @@ Agent 自动：发现新代币 → AI 分析风险 → 识别金狗 → 自动�
   <img src="./demo/auto-trade-4.png" alt="Auto Trade 4" width="300" />
 </p>
 
-**链上证明**
-[链上交易哈希（BSCScan）](https://bscscan.com/tx/0x5b4ea9543d106146d45e0e77e2c940dff36d1872103334ede761899e4c841d8f)
+**链上交易哈希（BSCScan）**
+
+- 买入: [0x5b4ea9543d106146d45e0e77e2c940dff36d1872103334ede761899e4c841d8f](https://bscscan.com/tx/0x5b4ea9543d106146d45e0e77e2c940dff36d1872103334ede761899e4c841d8f)
+
+- 卖出: [0x4fa43a80799ed20b778e9a2264f9a88eab517f9c92318769dcfb0cdcefdeeb4a](https://bscscan.com/tx/0x4fa43a80799ed20b778e9a2264f9a88eab517f9c92318769dcfb0cdcefdeeb4a)
 
 ---
 
@@ -190,6 +192,7 @@ OpenClaw Memory 用于：
 3. 校验风控与策略阈值（评分、限额、仓位）
 4. 发起链上交易并写入 AI 交易记录
 5. 结果回写并更新 Memory（用于后续学习）
+
 
 ---
 

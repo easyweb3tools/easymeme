@@ -1,5 +1,20 @@
 basePath: /
 definitions:
+  handler.AIPositionResponse:
+    properties:
+      cost_bnb:
+        type: string
+      quantity:
+        type: string
+      token_address:
+        type: string
+      token_symbol:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
   handler.AITradeListResponseEnvelope:
     properties:
       data:
@@ -373,6 +388,19 @@ definitions:
           type: string
         type: object
     type: object
+  handler.UpsertTokenPriceSnapshotPayload:
+    properties:
+      liquidityUsd:
+        type: number
+      priceUsd:
+        type: number
+      tokenAddress:
+        type: string
+      ts:
+        type: string
+      volume5mUsd:
+        type: number
+    type: object
   handler.WalletBalanceResponse:
     properties:
       address:
@@ -480,6 +508,38 @@ info:
   title: EasyMeme API
   version: "0.1"
 paths:
+  /api/ai-positions:
+    get:
+      description: Get AI positions by user (userId optional, fallback to EASYMEME_USER_ID)
+      parameters:
+      - description: User ID
+        in: query
+        name: userId
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/handler.AIPositionResponse'
+              type: array
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get AI positions
+      tags:
+      - ai-trades
   /api/ai-trades:
     get:
       description: List AI trades
@@ -657,6 +717,43 @@ paths:
       summary: Get token detail
       tags:
       - tokens
+  /api/tokens/{address}/price-series:
+    get:
+      description: Get analyzed token subsequent price series
+      parameters:
+      - description: Token address
+        in: path
+        name: address
+        required: true
+        type: string
+      - description: RFC3339 start time
+        in: query
+        name: from
+        type: string
+      - description: RFC3339 end time
+        in: query
+        name: to
+        type: string
+      - default: 2000
+        description: Max points
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get token price series
+      tags:
+      - tokens
   /api/tokens/analyzed:
     get:
       description: List analyzed tokens
@@ -729,6 +826,67 @@ paths:
               type: string
             type: object
       summary: Get pending tokens
+      tags:
+      - tokens
+  /api/tokens/price-snapshots:
+    post:
+      description: Upsert a token price snapshot (for tx_agent data feed)
+      parameters:
+      - description: snapshot
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpsertTokenPriceSnapshotPayload'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Upsert token price snapshot
+      tags:
+      - tokens
+  /api/tokens/stats/golden-dog-score-distribution:
+    get:
+      description: Get analyzed token goldenDogScore distribution for recent days
+      parameters:
+      - default: 7
+        description: Recent days
+        in: query
+        name: days
+        type: integer
+      - default: 10
+        description: Bucket size
+        in: query
+        name: bucket
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get goldenDogScore distribution
       tags:
       - tokens
   /api/trades:

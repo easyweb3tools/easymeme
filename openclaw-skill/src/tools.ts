@@ -4,12 +4,16 @@ import {
   createWallet,
   executeTrade,
   fetchPendingTokens,
+  getAnalyzedTokens,
+  getGoldenDogScoreDistribution,
   getPositions,
+  getTokenPriceSeries,
   getWalletBalance,
   submitAnalysis,
+  upsertTokenPriceSnapshot,
   upsertWalletConfig
 } from "./server-api.js";
-import { notifySellTrade } from "./notify.js";
+import { notifyGoldenDogFound, notifySellTrade } from "./notify.js";
 import {
   applyFeedback,
   estimateScore,
@@ -155,6 +159,32 @@ const RecordUserFeedbackSchema = Type.Object({
   userReputation: Type.Optional(Type.Number())
 });
 
+const GetAnalyzedTokensSchema = Type.Object({
+  days: Type.Optional(Type.Number()),
+  page: Type.Optional(Type.Number()),
+  pageSize: Type.Optional(Type.Number())
+});
+
+const GetGoldenDogScoreDistributionSchema = Type.Object({
+  days: Type.Optional(Type.Number()),
+  bucket: Type.Optional(Type.Number())
+});
+
+const GetTokenPriceSeriesSchema = Type.Object({
+  tokenAddress: Type.String(),
+  from: Type.Optional(Type.String()),
+  to: Type.Optional(Type.String()),
+  limit: Type.Optional(Type.Number())
+});
+
+const UpsertTokenPriceSnapshotSchema = Type.Object({
+  tokenAddress: Type.String(),
+  priceUsd: Type.Number(),
+  ts: Type.Optional(Type.String()),
+  liquidityUsd: Type.Optional(Type.Number()),
+  volume5mUsd: Type.Optional(Type.Number())
+});
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -242,7 +272,28 @@ export function createSubmitAnalysisTool(options?: { serverUrl?: string }): AnyA
       const analysis = params.analysis as unknown;
       validateAnalysis(analysis);
       await ensureGoldenDogScore(analysis as Record<string, unknown>);
+      const analysisRecord = analysis as Record<string, unknown>;
       const result = await submitAnalysis(tokenAddress, analysis as any, options?.serverUrl);
+
+      if (analysisRecord.isGoldenDog === true) {
+        await notifyGoldenDogFound({
+          tokenAddress,
+          tokenSymbol: readStringParam(params, "tokenSymbol") || undefined,
+          goldenDogScore:
+            typeof analysisRecord.goldenDogScore === "number"
+              ? analysisRecord.goldenDogScore
+              : undefined,
+          riskScore:
+            typeof analysisRecord.riskScore === "number"
+              ? analysisRecord.riskScore
+              : undefined,
+          decisionReason:
+            typeof analysisRecord.decisionReason === "string"
+              ? analysisRecord.decisionReason
+              : undefined,
+        });
+      }
+
       return jsonResult({ ok: true, result });
     }
   };
@@ -469,6 +520,82 @@ export function createGetPositionsTool(options?: { serverUrl?: string; userId?: 
         return `${symbol} | ${pos.token_address} | qty=${qty} | cost=${cost} | updated=${updated}`;
       });
       return jsonResult({ ok: true, positions: summary, count: summary.length });
+    }
+  };
+}
+
+export function createGetAnalyzedTokensTool(options?: { serverUrl?: string }): AnyAgentTool {
+  return {
+    label: "Get Analyzed Tokens",
+    name: "getAnalyzedTokens",
+    description: "Fetch analyzed token records (supports recent days + pagination) for strategy review.",
+    parameters: GetAnalyzedTokensSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const days = readNumberParam(params, "days") ?? 7;
+      const page = readNumberParam(params, "page") ?? 1;
+      const pageSize = readNumberParam(params, "pageSize") ?? 50;
+      const result = await getAnalyzedTokens(days, page, pageSize, options?.serverUrl);
+      return jsonResult({ ok: true, result });
+    }
+  };
+}
+
+export function createGetGoldenDogScoreDistributionTool(options?: { serverUrl?: string }): AnyAgentTool {
+  return {
+    label: "Get GoldenDog Score Distribution",
+    name: "getGoldenDogScoreDistribution",
+    description: "Fetch goldenDogScore distribution buckets for analyzed tokens.",
+    parameters: GetGoldenDogScoreDistributionSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const days = readNumberParam(params, "days") ?? 7;
+      const bucket = readNumberParam(params, "bucket") ?? 10;
+      const result = await getGoldenDogScoreDistribution(days, bucket, options?.serverUrl);
+      return jsonResult({ ok: true, result });
+    }
+  };
+}
+
+export function createGetTokenPriceSeriesTool(options?: { serverUrl?: string }): AnyAgentTool {
+  return {
+    label: "Get Token Price Series",
+    name: "getTokenPriceSeries",
+    description: "Fetch post-analysis token price series for replay and strategy tuning.",
+    parameters: GetTokenPriceSeriesSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const tokenAddress = readStringParam(params, "tokenAddress", { required: true });
+      const from = readStringParam(params, "from");
+      const to = readStringParam(params, "to");
+      const limit = readNumberParam(params, "limit") ?? 2000;
+      const result = await getTokenPriceSeries(tokenAddress, from || undefined, to || undefined, limit, options?.serverUrl);
+      return jsonResult({ ok: true, result });
+    }
+  };
+}
+
+export function createUpsertTokenPriceSnapshotTool(options?: { serverUrl?: string }): AnyAgentTool {
+  return {
+    label: "Upsert Token Price Snapshot",
+    name: "upsertTokenPriceSnapshot",
+    description: "Write price snapshot datapoints from tx_agent feed into EasyMeme server.",
+    parameters: UpsertTokenPriceSnapshotSchema,
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
+      const tokenAddress = readStringParam(params, "tokenAddress", { required: true });
+      const priceUsd = readNumberParam(params, "priceUsd");
+      if (typeof priceUsd !== "number" || priceUsd <= 0) {
+        throw new Error("priceUsd must be > 0");
+      }
+      const ts = readStringParam(params, "ts");
+      const liquidityUsd = readNumberParam(params, "liquidityUsd");
+      const volume5mUsd = readNumberParam(params, "volume5mUsd");
+      const result = await upsertTokenPriceSnapshot(
+        tokenAddress,
+        priceUsd,
+        ts || undefined,
+        typeof liquidityUsd === "number" ? liquidityUsd : undefined,
+        typeof volume5mUsd === "number" ? volume5mUsd : undefined,
+        options?.serverUrl,
+      );
+      return jsonResult({ ok: true, result });
     }
   };
 }
