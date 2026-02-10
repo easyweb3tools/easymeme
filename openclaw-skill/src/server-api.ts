@@ -1,4 +1,4 @@
-import type { AITradePayload, PendingToken, TokenRiskAnalysis } from "./types.js";
+import type { AIPosition, AITradePayload, PendingToken, TokenRiskAnalysis } from "./types.js";
 import crypto from "node:crypto";
 
 const DEFAULT_SERVER_URL = "http://localhost:8080";
@@ -181,6 +181,33 @@ export async function executeTrade(
   payload: AITradePayload & { userId: string },
   overrideUrl?: string,
 ): Promise<unknown> {
+  const normalizedAmountIn = (() => {
+    if (payload.amountIn === undefined || payload.amountIn === null) {
+      return undefined;
+    }
+    if (typeof payload.amountIn === "string") {
+      const trimmed = payload.amountIn.trim();
+      if (trimmed === "") {
+        return undefined;
+      }
+      const upper = trimmed.toUpperCase();
+      if (upper === "ALL" || upper === "100%") {
+        return "ALL";
+      }
+      const ratioMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*%$/);
+      if (ratioMatch) {
+        const ratio = Number(ratioMatch[1]) / 100;
+        if (Number.isFinite(ratio) && ratio > 0 && ratio <= 1) {
+          return ratio.toString();
+        }
+      }
+      return trimmed;
+    }
+    if (typeof payload.amountIn === "number") {
+      return payload.amountIn.toString();
+    }
+    return undefined;
+  })();
   return requestJson(
     `/api/wallet/execute-trade`,
     {
@@ -190,7 +217,7 @@ export async function executeTrade(
         tokenAddress: payload.tokenAddress,
         tokenSymbol: payload.tokenSymbol,
         type: payload.type,
-        amountIn: payload.amountIn,
+        amountIn: normalizedAmountIn,
         amountOut: payload.amountOut,
         goldenDogScore: payload.goldenDogScore,
         decisionReason: payload.decisionReason,
@@ -201,4 +228,18 @@ export async function executeTrade(
     },
     overrideUrl,
   );
+}
+
+export async function getPositions(userId: string, overrideUrl?: string): Promise<AIPosition[]> {
+  const payload = await requestJson(
+    `/api/ai-positions?userId=${encodeURIComponent(userId)}`,
+    undefined,
+    overrideUrl
+  );
+  const list = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object" && Array.isArray((payload as any).data)
+      ? (payload as any).data
+      : [];
+  return list as AIPosition[];
 }

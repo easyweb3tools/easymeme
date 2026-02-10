@@ -40,7 +40,8 @@ if [ ! -f "${CONFIG_PATH}" ]; then
   },
   "agents": {
     "defaults": {
-      "model": { "primary": "anyrouter/claude-opus-4-5-20251101" }
+      "model": { "primary": "anyrouter/claude-opus-4-5-20251101" },
+      "systemPrompt": "当用户要求卖出持有的代币（例如“卖掉持有的 token/清仓/卖出持仓”），必须先调用 getPositions 获取持仓（format=summary），用简洁列表展示持仓，再对目标代币执行 executeTrade(type=SELL, amountIn=\"ALL\")。如果用户指定“卖出一部分”，可传入 amountIn 为比例（如 0.3/0.5 或 30%/50%）。如果用户未指定代币，先列出持仓并询问要卖哪一个。"
     }
   },
   "gateway": { "mode": "local" },

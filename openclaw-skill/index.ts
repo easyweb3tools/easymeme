@@ -5,6 +5,7 @@ import {
   createEstimateGoldenDogScoreTool,
   createFetchPendingTokensTool,
   createExecuteTradeTool,
+  createGetPositionsTool,
   createGetWalletInfoTool,
   createRecordOutcomeTool,
   createRecordUserFeedbackTool,
@@ -46,6 +47,12 @@ const plugin = {
     );
     api.registerTool((ctx) =>
       createGetWalletInfoTool({
+        serverUrl: (ctx.config as any)?.serverUrl,
+        userId: (ctx.config as any)?.userId
+      })
+    );
+    api.registerTool((ctx) =>
+      createGetPositionsTool({
         serverUrl: (ctx.config as any)?.serverUrl,
         userId: (ctx.config as any)?.userId
       })
