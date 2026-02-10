@@ -33,6 +33,7 @@ func New(databaseURL string) (*Repository, error) {
 			&model.AIPosition{},
 			&model.TokenMarketSnapshot{},
 			&model.TokenAlert{},
+			&model.TokenPriceSnapshot{},
 		)
 	}
 
@@ -339,4 +340,88 @@ func (r *Repository) GetAITradeStats(ctx context.Context) (count int64, winRate 
 	winRate = float64(wins) / float64(len(trades))
 	avgPL = totalPL / float64(len(trades))
 	return count, winRate, avgPL, nil
+}
+
+func (r *Repository) GetAnalyzedTokensSince(ctx context.Context, since time.Time, limit int, offset int) ([]model.Token, int64, error) {
+	var tokens []model.Token
+	var total int64
+	q := r.db.WithContext(ctx).
+		Model(&model.Token{}).
+		Where("analysis_status = ?", "analyzed").
+		Where("analyzed_at >= ?", since)
+
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := q.Order("analyzed_at DESC").Limit(limit).Offset(offset).Find(&tokens).Error; err != nil {
+		return nil, 0, err
+	}
+	return tokens, total, nil
+}
+
+func (r *Repository) GetGoldenDogScoreDistributionSince(ctx context.Context, since time.Time, bucket int) (map[int]int64, int64, error) {
+	if bucket <= 0 {
+		bucket = 10
+	}
+	type row struct {
+		Bucket int
+		Count  int64
+	}
+	rows := []row{}
+	var total int64
+
+	q := r.db.WithContext(ctx).
+		Model(&model.Token{}).
+		Where("analysis_status = ?", "analyzed").
+		Where("analyzed_at >= ?", since)
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := q.Select("FLOOR(golden_dog_score / ?)::int AS bucket, COUNT(*) AS count", bucket).
+		Group("bucket").
+		Scan(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+	out := make(map[int]int64)
+	for _, r := range rows {
+		out[r.Bucket] = r.Count
+	}
+	return out, total, nil
+}
+
+func (r *Repository) UpsertTokenPriceSnapshot(ctx context.Context, s *model.TokenPriceSnapshot) error {
+	if s == nil {
+		return nil
+	}
+	var existing model.TokenPriceSnapshot
+	err := r.db.WithContext(ctx).
+		Where("token_address = ?", s.TokenAddress).
+		Where("ts = ?", s.TS).
+		First(&existing).Error
+	if err == nil {
+		return r.db.WithContext(ctx).Model(&model.TokenPriceSnapshot{}).
+			Where("id = ?", existing.ID).
+			Updates(map[string]any{
+				"price_usd":      s.PriceUSD,
+				"liquidity_usd":  s.LiquidityUSD,
+				"volume_5m_usd":  s.Volume5mUSD,
+			}).Error
+	}
+	return r.db.WithContext(ctx).Create(s).Error
+}
+
+func (r *Repository) GetTokenPriceSeries(ctx context.Context, tokenAddress string, from, to time.Time, limit int) ([]model.TokenPriceSnapshot, error) {
+	var rows []model.TokenPriceSnapshot
+	q := r.db.WithContext(ctx).
+		Where("token_address = ?", tokenAddress).
+		Where("ts >= ?", from).
+		Where("ts <= ?", to).
+		Order("ts ASC")
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
 }

@@ -15,6 +15,55 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/ai-positions": {
+            "get": {
+                "description": "Get AI positions by user (userId optional, fallback to EASYMEME_USER_ID)",
+                "tags": [
+                    "ai-trades"
+                ],
+                "summary": "Get AI positions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/handler.AIPositionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/ai-trades": {
             "get": {
                 "description": "List AI trades",
@@ -260,6 +309,98 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/tokens/price-snapshots": {
+            "post": {
+                "description": "Upsert a token price snapshot (for tx_agent data feed)",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Upsert token price snapshot",
+                "parameters": [
+                    {
+                        "description": "snapshot",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UpsertTokenPriceSnapshotPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tokens/stats/golden-dog-score-distribution": {
+            "get": {
+                "description": "Get analyzed token goldenDogScore distribution for recent days",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Get goldenDogScore distribution",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 7,
+                        "description": "Recent days",
+                        "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Bucket size",
+                        "name": "bucket",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/tokens/{address}": {
             "get": {
                 "description": "Get token by address",
@@ -387,6 +528,61 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tokens/{address}/price-series": {
+            "get": {
+                "description": "Get analyzed token subsequent price series",
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Get token price series",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token address",
+                        "name": "address",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "RFC3339 start time",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "RFC3339 end time",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 2000,
+                        "description": "Max points",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -856,6 +1052,29 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "handler.AIPositionResponse": {
+            "type": "object",
+            "properties": {
+                "cost_bnb": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "string"
+                },
+                "token_address": {
+                    "type": "string"
+                },
+                "token_symbol": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "handler.AITradeListResponseEnvelope": {
             "type": "object",
             "properties": {
@@ -1424,6 +1643,26 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "handler.UpsertTokenPriceSnapshotPayload": {
+            "type": "object",
+            "properties": {
+                "liquidityUsd": {
+                    "type": "number"
+                },
+                "priceUsd": {
+                    "type": "number"
+                },
+                "tokenAddress": {
+                    "type": "string"
+                },
+                "ts": {
+                    "type": "string"
+                },
+                "volume5mUsd": {
+                    "type": "number"
                 }
             }
         },

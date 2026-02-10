@@ -1,4 +1,11 @@
-import type { AIPosition, AITradePayload, PendingToken, TokenRiskAnalysis } from "./types.js";
+import type {
+  AIPosition,
+  AITradePayload,
+  GoldenDogScoreDistributionBucket,
+  PendingToken,
+  TokenPricePoint,
+  TokenRiskAnalysis
+} from "./types.js";
 import crypto from "node:crypto";
 
 const DEFAULT_SERVER_URL = "http://localhost:8080";
@@ -263,4 +270,76 @@ export async function getPositions(userId: string, overrideUrl?: string): Promis
       ? (payload as any).data
       : [];
   return list as AIPosition[];
+}
+
+export async function getAnalyzedTokens(
+  days = 7,
+  page = 1,
+  pageSize = 50,
+  overrideUrl?: string,
+): Promise<unknown> {
+  return requestJson(
+    `/api/tokens/analyzed?days=${encodeURIComponent(days)}&page=${encodeURIComponent(page)}&pageSize=${encodeURIComponent(pageSize)}`,
+    undefined,
+    overrideUrl,
+  );
+}
+
+export async function getGoldenDogScoreDistribution(
+  days = 7,
+  bucket = 10,
+  overrideUrl?: string,
+): Promise<{ distribution: GoldenDogScoreDistributionBucket[]; totalAnalyzed?: number; [k: string]: unknown }> {
+  const payload = (await requestJson(
+    `/api/tokens/stats/golden-dog-score-distribution?days=${encodeURIComponent(days)}&bucket=${encodeURIComponent(bucket)}`,
+    undefined,
+    overrideUrl,
+  )) as Record<string, unknown>;
+  return {
+    ...payload,
+    distribution: Array.isArray(payload?.distribution)
+      ? (payload.distribution as GoldenDogScoreDistributionBucket[])
+      : [],
+  };
+}
+
+export async function getTokenPriceSeries(
+  tokenAddress: string,
+  from?: string,
+  to?: string,
+  limit = 2000,
+  overrideUrl?: string,
+): Promise<{ tokenAddress?: string; series: TokenPricePoint[]; [k: string]: unknown }> {
+  const q = new URLSearchParams();
+  if (from) q.set("from", from);
+  if (to) q.set("to", to);
+  if (limit > 0) q.set("limit", String(limit));
+  const query = q.toString();
+  const payload = (await requestJson(
+    `/api/tokens/${encodeURIComponent(tokenAddress)}/price-series${query ? `?${query}` : ""}`,
+    undefined,
+    overrideUrl,
+  )) as Record<string, unknown>;
+  return {
+    ...payload,
+    series: Array.isArray(payload?.series) ? (payload.series as TokenPricePoint[]) : [],
+  };
+}
+
+export async function upsertTokenPriceSnapshot(
+  tokenAddress: string,
+  priceUsd: number,
+  ts?: string,
+  liquidityUsd?: number,
+  volume5mUsd?: number,
+  overrideUrl?: string,
+): Promise<unknown> {
+  return requestJson(
+    `/api/tokens/price-snapshots`,
+    {
+      method: "POST",
+      body: JSON.stringify({ tokenAddress, priceUsd, ts, liquidityUsd, volume5mUsd })
+    },
+    overrideUrl,
+  );
 }

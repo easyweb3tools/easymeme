@@ -53,6 +53,9 @@ func Setup(
 		api.GET("/tokens/pending", tokenHandler.GetPendingTokens)
 		api.GET("/tokens/analyzed", tokenHandler.GetAnalyzedTokens)
 		api.GET("/tokens/golden-dogs", tokenHandler.GetGoldenDogs)
+		api.GET("/tokens/stats/golden-dog-score-distribution", tokenHandler.GetGoldenDogScoreDistribution)
+		api.GET("/tokens/:address/price-series", tokenHandler.GetTokenPriceSeries)
+		api.POST("/tokens/price-snapshots", apiKeyMiddleware(cfg.ApiKey), tokenHandler.UpsertTokenPriceSnapshot)
 		api.POST("/tokens/:address/analysis", apiKeyMiddleware(cfg.ApiKey), tokenHandler.PostTokenAnalysis)
 
 		api.POST("/trades", tradeHandler.CreateTrade)

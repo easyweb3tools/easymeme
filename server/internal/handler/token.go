@@ -330,6 +330,41 @@ func (h *TokenHandler) GetAnalyzedTokens(c *gin.Context) {
 		}
 	}
 
+	if daysQuery := c.Query("days"); daysQuery != "" {
+		days := 7
+		if parsed, err := strconv.Atoi(daysQuery); err == nil && parsed > 0 {
+			days = parsed
+		}
+		page := 1
+		if v := c.Query("page"); v != "" {
+			if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+				page = parsed
+			}
+		}
+		pageSize := limit
+		if v := c.Query("pageSize"); v != "" {
+			if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+				pageSize = parsed
+			}
+		}
+		offset := (page - 1) * pageSize
+		since := time.Now().UTC().Add(-time.Duration(days) * 24 * time.Hour)
+		tokens, total, err := h.repo.GetAnalyzedTokensSince(c.Request.Context(), since, pageSize, offset)
+		if err != nil {
+			log.Printf("get analyzed tokens by days: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"data":     toTokenDTOList(tokens),
+			"page":     page,
+			"pageSize": pageSize,
+			"total":    total,
+			"since":    since,
+		})
+		return
+	}
+
 	tokens, err := h.repo.GetAnalyzedTokens(c.Request.Context(), limit)
 	if err != nil {
 		log.Printf("get analyzed tokens: %v", err)
@@ -438,6 +473,180 @@ func (h *TokenHandler) GetGoldenDogs(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": resp})
+}
+
+type GoldenDogScoreBucket struct {
+	Range string `json:"range"`
+	Count int64  `json:"count"`
+}
+
+// GetGoldenDogScoreDistribution godoc
+// @Summary Get goldenDogScore distribution
+// @Description Get analyzed token goldenDogScore distribution for recent days
+// @Tags tokens
+// @Param days query int false "Recent days" default(7)
+// @Param bucket query int false "Bucket size" default(10)
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]string
+// @Router /api/tokens/stats/golden-dog-score-distribution [get]
+func (h *TokenHandler) GetGoldenDogScoreDistribution(c *gin.Context) {
+	days := 7
+	if v := c.Query("days"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			days = parsed
+		}
+	}
+	bucket := 10
+	if v := c.Query("bucket"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			bucket = parsed
+		}
+	}
+	since := time.Now().UTC().Add(-time.Duration(days) * 24 * time.Hour)
+	raw, total, err := h.repo.GetGoldenDogScoreDistributionSince(c.Request.Context(), since, bucket)
+	if err != nil {
+		log.Printf("get goldenDogScore distribution: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	maxBucket := 100 / bucket
+	buckets := make([]GoldenDogScoreBucket, 0, maxBucket+1)
+	for i := 0; i <= maxBucket; i++ {
+		start := i * bucket
+		end := start + bucket - 1
+		if end > 100 {
+			end = 100
+		}
+		buckets = append(buckets, GoldenDogScoreBucket{
+			Range: strconv.Itoa(start) + "-" + strconv.Itoa(end),
+			Count: raw[i],
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"since":         since,
+		"until":         time.Now().UTC(),
+		"bucketSize":    bucket,
+		"totalAnalyzed": total,
+		"distribution":  buckets,
+	})
+}
+
+type TokenPricePoint struct {
+	TS           time.Time `json:"ts"`
+	PriceUSD     float64   `json:"price"`
+	LiquidityUSD float64   `json:"liquidityUsd,omitempty"`
+	Volume5mUSD  float64   `json:"volume5mUsd,omitempty"`
+}
+
+// GetTokenPriceSeries godoc
+// @Summary Get token price series
+// @Description Get analyzed token subsequent price series
+// @Tags tokens
+// @Param address path string true "Token address"
+// @Param from query string false "RFC3339 start time"
+// @Param to query string false "RFC3339 end time"
+// @Param limit query int false "Max points" default(2000)
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]string
+// @Router /api/tokens/{address}/price-series [get]
+func (h *TokenHandler) GetTokenPriceSeries(c *gin.Context) {
+	address := c.Param("address")
+	if address == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "token address is required"})
+		return
+	}
+	to := time.Now().UTC()
+	from := to.Add(-24 * time.Hour)
+	if v := c.Query("from"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			from = t
+		}
+	}
+	if v := c.Query("to"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			to = t
+		}
+	}
+	limit := 2000
+	if v := c.Query("limit"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	rows, err := h.repo.GetTokenPriceSeries(c.Request.Context(), address, from, to, limit)
+	if err != nil {
+		log.Printf("get token price series: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+	series := make([]TokenPricePoint, 0, len(rows))
+	for _, r := range rows {
+		series = append(series, TokenPricePoint{TS: r.TS, PriceUSD: r.PriceUSD, LiquidityUSD: r.LiquidityUSD, Volume5mUSD: r.Volume5mUSD})
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"tokenAddress": address,
+		"from":         from,
+		"to":           to,
+		"count":        len(series),
+		"series":       series,
+	})
+}
+
+type UpsertTokenPriceSnapshotPayload struct {
+	TokenAddress string  `json:"tokenAddress"`
+	TS           string  `json:"ts"`
+	PriceUSD     float64 `json:"priceUsd"`
+	LiquidityUSD float64 `json:"liquidityUsd"`
+	Volume5mUSD  float64 `json:"volume5mUsd"`
+}
+
+// UpsertTokenPriceSnapshot godoc
+// @Summary Upsert token price snapshot
+// @Description Upsert a token price snapshot (for tx_agent data feed)
+// @Tags tokens
+// @Param payload body UpsertTokenPriceSnapshotPayload true "snapshot"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/tokens/price-snapshots [post]
+func (h *TokenHandler) UpsertTokenPriceSnapshot(c *gin.Context) {
+	var payload UpsertTokenPriceSnapshotPayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+	if payload.TokenAddress == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "tokenAddress is required"})
+		return
+	}
+	if payload.PriceUSD <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "priceUsd must be > 0"})
+		return
+	}
+	ts := time.Now().UTC()
+	if payload.TS != "" {
+		parsed, err := time.Parse(time.RFC3339, payload.TS)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ts must be RFC3339"})
+			return
+		}
+		ts = parsed
+	}
+	row := &model.TokenPriceSnapshot{
+		TokenAddress: payload.TokenAddress,
+		TS:           ts,
+		PriceUSD:     payload.PriceUSD,
+		LiquidityUSD: payload.LiquidityUSD,
+		Volume5mUSD:  payload.Volume5mUSD,
+	}
+	if err := h.repo.UpsertTokenPriceSnapshot(c.Request.Context(), row); err != nil {
+		log.Printf("upsert token price snapshot: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
 type AnalyzeTokenRiskPayload struct {

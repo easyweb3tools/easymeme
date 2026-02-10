@@ -6,12 +6,16 @@ import {
   createEstimateGoldenDogScoreTool,
   createFetchPendingTokensTool,
   createExecuteTradeTool,
+  createGetAnalyzedTokensTool,
+  createGetGoldenDogScoreDistributionTool,
   createGetPositionsTool,
   createGetRulePerformanceReportTool,
+  createGetTokenPriceSeriesTool,
   createGetWalletInfoTool,
   createRecordOutcomeTool,
   createRecordUserFeedbackTool,
   createSubmitAnalysisTool,
+  createUpsertTokenPriceSnapshotTool,
   createUpsertWalletConfigTool
 } from "./src/tools.js";
 
@@ -61,6 +65,26 @@ const plugin = {
       })
     );
     api.registerTool(createGetRulePerformanceReportTool());
+    api.registerTool((ctx) =>
+      createGetAnalyzedTokensTool({
+        serverUrl: (ctx.config as any)?.serverUrl,
+      })
+    );
+    api.registerTool((ctx) =>
+      createGetGoldenDogScoreDistributionTool({
+        serverUrl: (ctx.config as any)?.serverUrl,
+      })
+    );
+    api.registerTool((ctx) =>
+      createGetTokenPriceSeriesTool({
+        serverUrl: (ctx.config as any)?.serverUrl,
+      })
+    );
+    api.registerTool((ctx) =>
+      createUpsertTokenPriceSnapshotTool({
+        serverUrl: (ctx.config as any)?.serverUrl,
+      })
+    );
     api.registerTool(createRecordOutcomeTool());
     api.registerTool(createRecordUserFeedbackTool());
   }
