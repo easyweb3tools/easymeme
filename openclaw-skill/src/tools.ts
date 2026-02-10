@@ -9,7 +9,7 @@ import {
   submitAnalysis,
   upsertWalletConfig
 } from "./server-api.js";
-import { notifySellTrade } from "./notify.js";
+import { notifyGoldenDogFound, notifySellTrade } from "./notify.js";
 import {
   applyFeedback,
   estimateScore,
@@ -242,7 +242,28 @@ export function createSubmitAnalysisTool(options?: { serverUrl?: string }): AnyA
       const analysis = params.analysis as unknown;
       validateAnalysis(analysis);
       await ensureGoldenDogScore(analysis as Record<string, unknown>);
+      const analysisRecord = analysis as Record<string, unknown>;
       const result = await submitAnalysis(tokenAddress, analysis as any, options?.serverUrl);
+
+      if (analysisRecord.isGoldenDog === true) {
+        await notifyGoldenDogFound({
+          tokenAddress,
+          tokenSymbol: readStringParam(params, "tokenSymbol") || undefined,
+          goldenDogScore:
+            typeof analysisRecord.goldenDogScore === "number"
+              ? analysisRecord.goldenDogScore
+              : undefined,
+          riskScore:
+            typeof analysisRecord.riskScore === "number"
+              ? analysisRecord.riskScore
+              : undefined,
+          decisionReason:
+            typeof analysisRecord.decisionReason === "string"
+              ? analysisRecord.decisionReason
+              : undefined,
+        });
+      }
+
       return jsonResult({ ok: true, result });
     }
   };
