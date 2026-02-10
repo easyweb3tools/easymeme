@@ -2,7 +2,7 @@
 
 > 自动发现、分析、交易 BNB Chain 上的金狗
 
-**开源地址**: https://github.com/easyweb3tools/easymeme
+**官网**: https://meme.easyweb3.tools/
 
 ---
 
