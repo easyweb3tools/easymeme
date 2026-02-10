@@ -291,54 +291,64 @@ function TokenGrid({
   return (
     <div className="grid gap-4">
       {tokens.map((token) => (
-        <Link
+        <div
           key={token.address}
-          href={withLang(`/tokens/${token.address}`, lang)}
           className="rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-white/30"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold">
-                {token.symbol || 'UNKNOWN'}{' '}
-                <span className="text-white/50 text-sm">{token.name}</span>
-              </h2>
-              <p className="text-xs text-white/60 mt-1">{token.address}</p>
+          <Link href={withLang(`/tokens/${token.address}`, lang)} className="block">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  {token.symbol || 'UNKNOWN'}{' '}
+                  <span className="text-white/50 text-sm">{token.name}</span>
+                </h2>
+                <p className="text-xs text-white/60 mt-1">{token.address}</p>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-semibold">
+                <span className={`px-3 py-1 rounded-full ${riskTone(token.riskLevel)}`}>
+                  {token.riskLevel.toUpperCase()}
+                </span>
+                <span className={`px-3 py-1 rounded-full ${phaseTone(token.phase)}`}>
+                  {token.phase}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-xs font-semibold">
-              <span className={`px-3 py-1 rounded-full ${riskTone(token.riskLevel)}`}>
-                {token.riskLevel.toUpperCase()}
-              </span>
-              <span className={`px-3 py-1 rounded-full ${phaseTone(token.phase)}`}>
-                {token.phase}
-              </span>
+            <div className="grid gap-4 md:grid-cols-4 mt-4 text-sm text-white/70">
+              <div>
+                <p className="text-white/50 text-xs">{t(lang, 'gd_effective')}</p>
+                <p className="text-white text-lg font-semibold">
+                  {token.effectiveScore}
+                </p>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs">{t(lang, 'gd_golden')}</p>
+                <p className="text-white text-lg font-semibold">
+                  {token.goldenDogScore}
+                </p>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs">{t(lang, 'gd_risk')}</p>
+                <p className="text-white text-lg font-semibold">{token.riskScore}</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs">{t(lang, 'gd_decay')}</p>
+                <p className="text-white text-lg font-semibold">
+                  {(token.timeDecayFactor * 100).toFixed(0)}%
+                </p>
+              </div>
             </div>
+          </Link>
+          <div className="mt-4">
+            <a
+              href={`https://gmgn.ai/bsc/token/${token.address}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/80 hover:text-white hover:border-white/40"
+            >
+              GMGN
+            </a>
           </div>
-
-          <div className="grid gap-4 md:grid-cols-4 mt-4 text-sm text-white/70">
-            <div>
-              <p className="text-white/50 text-xs">{t(lang, 'gd_effective')}</p>
-              <p className="text-white text-lg font-semibold">
-                {token.effectiveScore}
-              </p>
-            </div>
-            <div>
-              <p className="text-white/50 text-xs">{t(lang, 'gd_golden')}</p>
-              <p className="text-white text-lg font-semibold">
-                {token.goldenDogScore}
-              </p>
-            </div>
-            <div>
-              <p className="text-white/50 text-xs">{t(lang, 'gd_risk')}</p>
-              <p className="text-white text-lg font-semibold">{token.riskScore}</p>
-            </div>
-            <div>
-              <p className="text-white/50 text-xs">{t(lang, 'gd_decay')}</p>
-              <p className="text-white text-lg font-semibold">
-                {(token.timeDecayFactor * 100).toFixed(0)}%
-              </p>
-            </div>
-          </div>
-        </Link>
+        </div>
       ))}
 
       {tokens.length === 0 && (

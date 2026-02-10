@@ -135,48 +135,59 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {goldenDogs.map((token) => (
-              <Link
+              <div
                 key={token.address}
-                href={withLang(`/tokens/${token.address}`, lang)}
                 className="rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-white/30"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-semibold">
-                      {token.symbol || 'UNKNOWN'}{' '}
-                      <span className="text-white/50 text-sm">{token.name}</span>
-                    </h3>
-                    <p className="text-xs text-white/60 mt-1">{token.address}</p>
+                <Link href={withLang(`/tokens/${token.address}`, lang)} className="block">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold">
+                        {token.symbol || 'UNKNOWN'}{' '}
+                        <span className="text-white/50 text-sm">{token.name}</span>
+                      </h3>
+                      <p className="text-xs text-white/60 mt-1">{token.address}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-white/50">Effective</p>
+                      <p className="text-xl font-semibold text-white">
+                        {token.effectiveScore}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-white/50">Effective</p>
-                    <p className="text-xl font-semibold text-white">
-                      {token.effectiveScore}
-                    </p>
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
+                    <span
+                      className={`px-3 py-1 rounded-full ${
+                        token.riskLevel === 'safe'
+                          ? 'bg-[#7cf2a4] text-black'
+                          : token.riskLevel === 'warning'
+                            ? 'bg-[#ffbf5c] text-black'
+                            : token.riskLevel === 'danger'
+                              ? 'bg-[#f07d7d] text-black'
+                              : 'bg-white/10 text-white'
+                      }`}
+                    >
+                      {token.riskLevel.toUpperCase()}
+                    </span>
+                    <span className="px-3 py-1 rounded-full border border-white/20 text-white/70">
+                      GD {token.goldenDogScore}
+                    </span>
+                    <span className="px-3 py-1 rounded-full border border-white/20 text-white/70">
+                      Phase {token.phase}
+                    </span>
                   </div>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
-                  <span
-                    className={`px-3 py-1 rounded-full ${
-                      token.riskLevel === 'safe'
-                        ? 'bg-[#7cf2a4] text-black'
-                        : token.riskLevel === 'warning'
-                          ? 'bg-[#ffbf5c] text-black'
-                          : token.riskLevel === 'danger'
-                            ? 'bg-[#f07d7d] text-black'
-                            : 'bg-white/10 text-white'
-                    }`}
+                </Link>
+                <div className="mt-4">
+                  <a
+                    href={`https://gmgn.ai/bsc/token/${token.address}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/80 hover:text-white hover:border-white/40"
                   >
-                    {token.riskLevel.toUpperCase()}
-                  </span>
-                  <span className="px-3 py-1 rounded-full border border-white/20 text-white/70">
-                    GD {token.goldenDogScore}
-                  </span>
-                  <span className="px-3 py-1 rounded-full border border-white/20 text-white/70">
-                    Phase {token.phase}
-                  </span>
+                    GMGN
+                  </a>
                 </div>
-              </Link>
+              </div>
             ))}
             {goldenDogs.length === 0 && (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
