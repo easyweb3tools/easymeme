@@ -52,8 +52,10 @@ export default async function TokenDetailPage({ params, searchParams }: TokenDet
   const riskFactors =
     (token.analysisResult?.riskFactors as Record<string, string> | undefined) ??
     (token.riskDetails?.risk_factors as Record<string, string> | undefined);
+  const analysisReasoning = token.analysisResult?.reasoning as string | undefined;
+  const analysisRecommendation = token.analysisResult?.recommendation as string | undefined;
   const recommendation =
-    (token.analysisResult?.recommendation as string | undefined) ??
+    analysisRecommendation ??
     (token.riskDetails?.reasoning as string | undefined);
 
   return (
@@ -140,13 +142,24 @@ export default async function TokenDetailPage({ params, searchParams }: TokenDet
           </div>
         </section>
 
-        {(token.riskDetails || token.analysisResult) && (
-          <details className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
-            <summary className="cursor-pointer text-lg font-semibold text-white">{t(lang, 'token_analysis')}</summary>
-            <pre className="mt-3 whitespace-pre-wrap text-xs text-white/70">
-              {JSON.stringify({ riskDetails: token.riskDetails, analysisResult: token.analysisResult }, null, 2)}
-            </pre>
-          </details>
+        {(analysisReasoning || analysisRecommendation) && (
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
+            <h2 className="text-lg font-semibold text-white mb-3">{t(lang, 'token_analysis')}</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-xs uppercase tracking-widest text-white/50 mb-2">
+                  {t(lang, 'token_reasoning')}
+                </p>
+                <p className="text-sm text-white/80">{analysisReasoning ?? 'N/A'}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-xs uppercase tracking-widest text-white/50 mb-2">
+                  {t(lang, 'token_recommendation')}
+                </p>
+                <p className="text-sm text-white/80">{analysisRecommendation ?? 'N/A'}</p>
+              </div>
+            </div>
+          </section>
         )}
       </main>
     </div>
