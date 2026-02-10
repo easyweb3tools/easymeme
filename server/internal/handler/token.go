@@ -123,25 +123,30 @@ func (h *TokenHandler) GetToken(c *gin.Context) {
 }
 
 type TokenDetailResponse struct {
-	ID              string                 `json:"id"`
-	Address         string                 `json:"address"`
-	Name            string                 `json:"name"`
-	Symbol          string                 `json:"symbol"`
-	PairAddress     string                 `json:"pairAddress"`
-	Dex             string                 `json:"dex"`
-	Liquidity       float64                `json:"liquidity"`
-	CreatorAddress  string                 `json:"creatorAddress"`
-	CreatedAt       time.Time              `json:"createdAt"`
-	AnalyzedAt      *time.Time             `json:"analyzedAt"`
-	RiskScore       int                    `json:"riskScore"`
-	RiskLevel       string                 `json:"riskLevel"`
-	IsGoldenDog     bool                   `json:"isGoldenDog"`
-	GoldenDogScore  int                    `json:"goldenDogScore"`
-	EffectiveScore  int                    `json:"effectiveScore"`
-	TimeDecayFactor float64                `json:"timeDecayFactor"`
-	Phase           string                 `json:"phase"`
-	RiskDetails     map[string]interface{} `json:"riskDetails,omitempty"`
-	AnalysisResult  map[string]interface{} `json:"analysisResult,omitempty"`
+	ID                 string                 `json:"id"`
+	Address            string                 `json:"address"`
+	Name               string                 `json:"name"`
+	Symbol             string                 `json:"symbol"`
+	PairAddress        string                 `json:"pairAddress"`
+	Dex                string                 `json:"dex"`
+	Liquidity          float64                `json:"liquidity"`
+	CreatorAddress     string                 `json:"creatorAddress"`
+	CreatedAt          time.Time              `json:"createdAt"`
+	AnalyzedAt         *time.Time             `json:"analyzedAt"`
+	RiskScore          int                    `json:"riskScore"`
+	RiskLevel          string                 `json:"riskLevel"`
+	IsGoldenDog        bool                   `json:"isGoldenDog"`
+	GoldenDogScore     int                    `json:"goldenDogScore"`
+	EffectiveScore     int                    `json:"effectiveScore"`
+	TimeDecayFactor    float64                `json:"timeDecayFactor"`
+	Phase              string                 `json:"phase"`
+	RiskDetails        map[string]interface{} `json:"riskDetails,omitempty"`
+	AnalysisResult     map[string]interface{} `json:"analysisResult,omitempty"`
+	GoPlus             any                    `json:"goplus"`
+	DEXScreener        any                    `json:"dexscreener"`
+	HolderDistribution any                    `json:"holderDistribution"`
+	CreatorHistory     any                    `json:"creatorHistory"`
+	MarketAlerts       any                    `json:"marketAlerts"`
 }
 
 type TokenDetailResponseEnvelope struct {
@@ -172,27 +177,59 @@ func (h *TokenHandler) GetTokenDetail(c *gin.Context) {
 	if len(token.AnalysisResult) > 0 {
 		_ = json.Unmarshal(token.AnalysisResult, &analysisResult)
 	}
+	goplusData := map[string]interface{}{}
+	if len(token.RiskDetails) > 0 {
+		if normalized, ok := riskDetails["normalized"].(map[string]interface{}); ok {
+			goplusData = normalized
+			if raw, exists := riskDetails["raw"]; exists {
+				goplusData["raw"] = raw
+			}
+		} else {
+			goplusData = riskDetails
+		}
+	}
+	marketData := map[string]interface{}{}
+	if len(token.MarketData) > 0 {
+		_ = json.Unmarshal(token.MarketData, &marketData)
+	}
+	holderData := map[string]interface{}{}
+	if len(token.HolderData) > 0 {
+		_ = json.Unmarshal(token.HolderData, &holderData)
+	}
+	creatorData := map[string]interface{}{}
+	if len(token.CreatorHistory) > 0 {
+		_ = json.Unmarshal(token.CreatorHistory, &creatorData)
+	}
+	alertData := []map[string]interface{}{}
+	if len(token.MarketAlerts) > 0 {
+		_ = json.Unmarshal(token.MarketAlerts, &alertData)
+	}
 
 	resp := TokenDetailResponse{
-		ID:              token.ID,
-		Address:         token.Address,
-		Name:            token.Name,
-		Symbol:          token.Symbol,
-		PairAddress:     token.PairAddress,
-		Dex:             token.Dex,
-		Liquidity:       token.InitialLiquidity.InexactFloat64(),
-		CreatorAddress:  token.CreatorAddress,
-		CreatedAt:       token.CreatedAt,
-		AnalyzedAt:      token.AnalyzedAt,
-		RiskScore:       token.RiskScore,
-		RiskLevel:       token.RiskLevel,
-		IsGoldenDog:     token.IsGoldenDog,
-		GoldenDogScore:  token.GoldenDogScore,
-		EffectiveScore:  token.EffectiveScore(),
-		TimeDecayFactor: token.TimeDecayFactor(),
-		Phase:           token.GoldenDogPhase(),
-		RiskDetails:     riskDetails,
-		AnalysisResult:  analysisResult,
+		ID:                 token.ID,
+		Address:            token.Address,
+		Name:               token.Name,
+		Symbol:             token.Symbol,
+		PairAddress:        token.PairAddress,
+		Dex:                token.Dex,
+		Liquidity:          token.InitialLiquidity.InexactFloat64(),
+		CreatorAddress:     token.CreatorAddress,
+		CreatedAt:          token.CreatedAt,
+		AnalyzedAt:         token.AnalyzedAt,
+		RiskScore:          token.RiskScore,
+		RiskLevel:          token.RiskLevel,
+		IsGoldenDog:        token.IsGoldenDog,
+		GoldenDogScore:     token.GoldenDogScore,
+		EffectiveScore:     token.EffectiveScore(),
+		TimeDecayFactor:    token.TimeDecayFactor(),
+		Phase:              token.GoldenDogPhase(),
+		RiskDetails:        riskDetails,
+		AnalysisResult:     analysisResult,
+		GoPlus:             goplusData,
+		DEXScreener:        marketData,
+		HolderDistribution: holderData,
+		CreatorHistory:     creatorData,
+		MarketAlerts:       alertData,
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": resp})
