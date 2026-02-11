@@ -43,7 +43,7 @@ jobs:
       - name: Build and push (server)
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/easymeme/server
+          context: .
           file: ./apps/easymeme/server/Dockerfile
           push: true
           platforms: linux/amd64
