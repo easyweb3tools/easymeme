@@ -260,7 +260,7 @@ func waitForReceipt(ctx context.Context, eth *ethereum.Client, txHash common.Has
 		case <-deadline:
 			return nil, fmt.Errorf("receipt timeout")
 		case <-ticker.C:
-			receipt, err := eth.TransactionReceipt(ctx, txHash)
+			receipt, err := eth.Receipt(ctx, txHash)
 			if err != nil {
 				continue
 			}
