@@ -1,2 +1,2 @@
 docker-compose-prod.yml
-scripts/run-prod.sh
+run-prod.sh
