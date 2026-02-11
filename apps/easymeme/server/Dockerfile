@@ -1,12 +1,18 @@
 FROM golang:1.23-alpine AS builder
 
-WORKDIR /app
+WORKDIR /workspace
 
-COPY go.mod go.sum ./
-RUN go mod download
+# Copy module metadata first for better layer caching.
+COPY apps/easymeme/server/go.mod apps/easymeme/server/go.sum ./apps/easymeme/server/
+COPY packages/go-sdk/go.mod ./packages/go-sdk/go.mod
 
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/server ./cmd/server
+# Build with a local workspace so easymeme can import easyweb3/go-sdk.
+RUN go work init ./apps/easymeme/server ./packages/go-sdk
+RUN cd apps/easymeme/server && go mod download
+
+COPY apps/easymeme/server ./apps/easymeme/server
+COPY packages/go-sdk ./packages/go-sdk
+RUN cd apps/easymeme/server && CGO_ENABLED=0 GOOS=linux go build -o /bin/server ./cmd/server
 
 FROM alpine:3.19
 

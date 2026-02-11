@@ -1,7 +1,8 @@
 services:
   easymeme-server:
     build:
-      context: ./server
+      context: ../..
+      dockerfile: ./apps/easymeme/server/Dockerfile
     environment:
       - PORT=8080
       - DATABASE_URL=postgres://easyweb3:${POSTGRES_PASSWORD:-easyweb3}@postgres:5432/easymeme_db?sslmode=disable
