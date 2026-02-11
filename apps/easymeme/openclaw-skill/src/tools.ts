@@ -487,6 +487,14 @@ export function createExecuteTradeTool(options?: { serverUrl?: string; userId?: 
         throw new Error("tokenAddress is required");
       }
 
+      if (!amountIn) {
+        if (type === "SELL") {
+          amountIn = "ALL";
+        } else {
+          throw new Error("amountIn is required for BUY");
+        }
+      }
+
       const result = await executeTrade(
         {
           userId,

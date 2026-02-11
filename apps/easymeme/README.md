@@ -55,7 +55,8 @@ OpenClaw turns EasyMeme from a static tool into a continuously learning agent.
 ```bash
 git clone https://github.com/easyweb3tools/easymeme
 cd easymeme
-# Update env values in the script first
+cp .env.example .env
+# Edit .env only if needed (defaults already work for local run)
 ./scripts/run-docker-compose.sh
 ```
 
@@ -87,14 +88,15 @@ Then open `http://localhost`.
 
 ### Option A: Script startup (recommended)
 
-Edit `scripts/run-docker-compose.sh` with real values:
-- `BSC_RPC_HTTP` / `BSC_RPC_WS`
-- `BSCSCAN_API_KEY`
-- `EASYMEME_API_KEY`
-- `EASYMEME_USER_ID`
-- `EASYMEME_API_HMAC_SECRET`
-- `WALLET_MASTER_KEY`
-- `OPENCLAW_GATEWAY_TOKEN`
+Keep config in one file:
+
+```bash
+cp .env.example .env
+```
+
+Minimal useful edits in `.env`:
+- `WALLET_MASTER_KEY` (required only for managed-wallet trading)
+- `OPENCLAW_GATEWAY_TOKEN` (recommended if gateway exposed)
 
 Then run:
 
