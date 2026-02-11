@@ -57,7 +57,8 @@
 ```bash
 git clone https://github.com/easyweb3tools/easymeme
 cd easymeme
-# 先修改脚本里的环境变量值
+cp .env.example .env
+# 默认值可直接本地启动，按需修改 .env
 ./scripts/run-docker-compose.sh
 ```
 
@@ -88,14 +89,15 @@ cd easymeme
 ## 📦 本地开发
 
 **方式 A：一键启动（推荐）**
-编辑 `scripts/run-docker-compose.sh`，填入你的真实值：
-- `BSC_RPC_HTTP` / `BSC_RPC_WS`
-- `BSCSCAN_API_KEY`
-- `EASYMEME_API_KEY`
-- `EASYMEME_USER_ID`
-- `EASYMEME_API_HMAC_SECRET`
-- `WALLET_MASTER_KEY`
-- `OPENCLAW_GATEWAY_TOKEN`
+统一在一个文件里配置：
+
+```bash
+cp .env.example .env
+```
+
+`.env` 最少建议改这两项：
+- `WALLET_MASTER_KEY`（仅自动交易托管钱包时必须）
+- `OPENCLAW_GATEWAY_TOKEN`（开放网关时强烈建议）
 
 ```bash
 # 一键启动
