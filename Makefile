@@ -1,46 +1,29 @@
-.PHONY: dev build test swag web-dev web-build openclaw-build openclaw-agent \
-	docker-up docker-up-build docker-down logs logs-openclaw logs-all
-
-COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo "docker compose"; fi)
+.PHONY: dev infra stop clean build-base build-easymeme build-all test-base test-easymeme test-all
 
 dev:
-	cd server && go run ./cmd/server
+	docker compose -f infra/docker-compose.yml -f apps/easymeme/docker-compose.yml up --build
 
-build:
-	cd server && go build -o bin/server ./cmd/server
+infra:
+	docker compose -f infra/docker-compose.yml up --build
 
-test:
-	cd server && go test -v ./...
+stop:
+	docker compose -f infra/docker-compose.yml -f apps/easymeme/docker-compose.yml down
 
-swag:
-	./scripts/gen-swagger.sh
+clean:
+	docker compose -f infra/docker-compose.yml -f apps/easymeme/docker-compose.yml down -v
 
-web-dev:
-	cd web && npm run dev
+build-base:
+	cd services/base && go build ./cmd/server/
 
-web-build:
-	cd web && npm run build
+build-easymeme:
+	cd apps/easymeme/server && go build ./cmd/server/
 
-openclaw-build:
-	cd openclaw-skill && npm run build
+build-all: build-base build-easymeme
 
-openclaw-agent:
-	cd openclaw-skill && openclaw agent --local --session-id easymeme --message "获取待分析代币 -> AI 分析 -> 回写结果"
+test-base:
+	cd services/base && go test ./...
 
-docker-up:
-	$(COMPOSE) up -d
+test-easymeme:
+	cd apps/easymeme/server && go test ./...
 
-docker-up-build:
-	$(COMPOSE) up --build
-
-docker-down:
-	$(COMPOSE) down
-
-logs:
-	$(COMPOSE) logs -f server
-
-logs-openclaw:
-	$(COMPOSE) logs -f openclaw
-
-logs-all:
-	$(COMPOSE) logs -f
+test-all: test-base test-easymeme

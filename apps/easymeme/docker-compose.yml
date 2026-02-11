@@ -1,0 +1,65 @@
+services:
+  easymeme-server:
+    build:
+      context: ./server
+    environment:
+      - PORT=8080
+      - DATABASE_URL=postgres://easyweb3:${POSTGRES_PASSWORD:-easyweb3}@postgres:5432/easymeme_db?sslmode=disable
+      - AUTO_MIGRATE=true
+      - BASE_SERVICE_URL=http://base-service:8081
+      - BASE_SERVICE_TOKEN=${SERVICE_TOKEN_EASYMEME:-dev-token}
+      - BSC_RPC_HTTP=${BSC_RPC_HTTP:-https://bsc-dataseed.bnbchain.org}
+      - BSC_RPC_WS=${BSC_RPC_WS:-}
+      - EASYMEME_API_KEY=${EASYMEME_API_KEY:-}
+      - EASYMEME_USER_ID=${EASYMEME_USER_ID:-default}
+      - EASYMEME_API_HMAC_SECRET=${EASYMEME_API_HMAC_SECRET:-}
+      - WALLET_MASTER_KEY=${WALLET_MASTER_KEY:-}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+    depends_on:
+      - base-service
+    restart: unless-stopped
+
+  easymeme-web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: http://easymeme-server:8080
+        NEXT_PUBLIC_WS_URL: ws://easymeme-server:8080/ws
+    environment:
+      - NEXT_PUBLIC_API_URL=http://easymeme-server:8080
+      - NEXT_PUBLIC_WS_URL=ws://easymeme-server:8080/ws
+    depends_on:
+      - easymeme-server
+    restart: unless-stopped
+
+  easymeme-openclaw:
+    build:
+      context: ./openclaw-skill
+    environment:
+      - HOME=/home/node
+      - EASYMEME_SERVER_URL=http://easymeme-server:8080
+      - EASYMEME_API_KEY=${EASYMEME_API_KEY:-}
+      - EASYMEME_USER_ID=${EASYMEME_USER_ID:-default}
+      - EASYMEME_NOTIFY_CHANNEL=${EASYMEME_NOTIFY_CHANNEL:-}
+      - EASYMEME_NOTIFY_TO=${EASYMEME_NOTIFY_TO:-}
+      - OPENCLAW_STATE_DIR=/home/node/.openclaw
+      - OPENCLAW_GATEWAY_PORT=${OPENCLAW_GATEWAY_PORT:-18789}
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      - OPENCLAW_GATEWAY_BIND=${OPENCLAW_GATEWAY_BIND:-lan}
+    volumes:
+      - openclaw_state:/home/node/.openclaw
+    depends_on:
+      - easymeme-server
+    ports:
+      - "18789:18789"
+    user: "0"
+    restart: unless-stopped
+    command: ["/app/entrypoint.sh"]
+
+volumes:
+  openclaw_state:
+
+networks:
+  default:
+    name: easyweb3
+    external: true
